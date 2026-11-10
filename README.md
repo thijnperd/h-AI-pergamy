@@ -4,69 +4,94 @@ A neural network trained on **8,378 real speed dates**, drawn as a 10 x 10 hyper
 map, and wrapped in a local tool that estimates **your chance of a mutual yes**, **how
 hypergamous you are**, and **which partners are actually in reach**.
 
-Every number below is computed from trained weights. No decorative arrows, no invented
+Every number below comes out of trained weights. No decorative arrows, no invented
 statistics.
 
 ![the hypergamy map](hypergamy_map.svg)
 
 ## The map
 
-One picture, three answers.
+Rows are men, columns are women, each cell is P(he says yes) x P(she says yes).
 
-* **rows are men, columns are women.** Each cell is P(he says yes) x P(she says yes),
-  both probabilities from the trained networks. Brighter means more likely.
-* **the arrows** are what average people do: every man points at the woman he is most
-  likely to match with, every woman points at the man she is most likely to match with.
-  A black dot marks each man's best column, a blue dot each woman's best row.
-* **your arrow** is the thick black line and the outlined cell, built from your own
-  numbers. It also prints your **hypergamy score between -10 and +10**, your
-  **attractiveness percentile against same-gender competitors**, and your **chance** at
-  the level you reach best.
-* **the ten levels are packages**, not ten real people: looks, age and income move
-  together, which is why the grid has structure instead of one bright column.
-
-The second chart is the average yes rate at each level for each side:
+* **the heatmap** — 100 real forward passes, not a drawing.
+* **the arrows** — what average people do: each man points at the woman he is most
+  likely to match with, each woman at the man she is most likely to match with, black
+  dot for his best column, blue dot for her best row.
+* **your arrow** — the thick line and the boxed cell, next to your **hypergamy score
+  between -10 and +10**, your **attractiveness percentile against same-gender
+  competitors**, and your **chance** at the level you reach best.
+* **the ten levels are packages**: looks, age and income move together, which is why the
+  grid has structure instead of one bright column.
 
 ![average attraction](hypergamy_average.svg)
 
 ## Who you can reach
 
-`python profile.py --range` and the GUI classify the ten levels relative to your own best
-cell: **likely** at 60% or more of it, **stretch** between 25% and 60%, **hard** below
-that. It is a model output with real error bars, not a promise.
+| share of your best cell | band | what it means |
+|---|---|---|
+| 60% or more | **likely** | in range on these stats |
+| 25% – 60% | **stretch** | needs something to change |
+| below 25% | **hard** | out of reach on these stats |
 
 ## Quick start
 
 ```bash
-python -m pip install -r requirements.txt   # numpy + matplotlib
-python gui.py                               # http://127.0.0.1:8000
-python hypergamy_map.py                     # the map, the bands, both svg charts
-python profile.py --mode regular --gender 1 --age 24 --income 30000 \
-    --self 7,7,7,7,5 --want 8,6,7,8,9,7 --importance 30,10,15,15,20,10 --range
+python -m pip install -r requirements.txt
+python gui.py
 ```
 
-The page walks itself: pick a mode, fill the form, press Compute, then read the grid
-and the bands. `python profile.py --help`, `python gui.py --help` and
-`python hypergamy_map.py --help` list every flag.
+Open `http://127.0.0.1:8000/`, fill the form, press **Compute**. The profile is created
+in the GUI, not on the command line.
 
-## What is inside
+```mermaid
+flowchart TD
+    A["install Python 3.10+"] --> B["pip install -r requirements.txt"]
+    B --> C["python gui.py"]
+    C --> D["open http://127.0.0.1:8000"]
+    D --> E{"pick a mode"}
+    E -- regular --> F["ten numbers"]
+    E -- advanced --> G["adds height, build, age gap"]
+    E -- compatibility --> H["adds the extra inputs"]
+    E -- 18-25 --> I["forces the young model"]
+    F --> J["choose man or woman"]
+    G --> J
+    H --> J
+    I --> J
+    J --> K["age, income, goal"]
+    K --> L["rate yourself, say what you want, weight it"]
+    L --> M["press Compute"]
+    M --> N["read numbers, adjustments, rank"]
+    N --> O["read the map and Who you can reach"]
+    O --> P["Ctrl+C to stop"]
+```
 
-| file | what it does |
-|---|---|
-| `gui.py` | the local page, one compute per profile, nothing leaves the machine |
-| `hypergamy_map.py` | the ten by ten map, the reach bands and both svg charts |
-| `profile.py` | the same numbers on the command line, plus `--range` and `--chart` |
-| `adult.py` | every adjustment with its basis and its source, printed by running it |
-| `route.py` | which weight files run for a given age and mode |
-| `train.py` | the training loop, the CV and the calibration |
+## What is trained (both genders)
 
-The trained weights are committed, so a clone runs immediately; `train.py` reproduces
-them. Seven files cover the taste, market and 18 to 25 models, about 60 KB in total.
+| model | inputs | architecture | 5-fold CV | baseline |
+|---|---|---|---|---|
+| taste, men | 16 | 16 → 24 → 12 → 1 | **81.1% ± 2.1** | 50.1% |
+| taste, women | 16 | 16 → 24 → 12 → 1 | **80.3% ± 1.8** | 65.8% |
+| market, men | 8 | 8 → 16 → 8 → 1 | 66.1% ± 2.5 | 61.5% |
+| market, women | 8 | 8 → 16 → 8 → 1 | 63.9% ± 2.0 | 55.8% |
+
+Six weight files plus the base model and the 18–25 model are committed. The market side
+is weaker on purpose: age, income and self-ratings say less about someone else's yes than
+about your own.
+
+Height, body type, age gap and the compatibility inputs are **not trained** — no public
+dataset pairs them with a second date. They run on a documented prior, capped at 8
+points, and every row prints its basis: `measured`, `population` or `research`. Sources
+and the whole table: `python adult.py`.
+
+## Releases
+
+Each release ships **`hypergamy-runtime.zip`** — GUI, map, command line, weights and both
+charts, about 56 KB, 18 files, nothing to train. Build it with
+`python tools/make_zip.py`; `.github/workflows/release.yml` attaches it to every
+published release. Download: [the latest release](../../releases/latest).
 
 ## Limits
 
-The market model is 64–66% accurate, so the chance it prints is an estimate with real
-error bars. Partner income is not in the data, so status is ambition plus your own
-income. The ten levels are archetypes, not people: they rank packages, and a real person
-is never exactly level 7. Compatibility effects are priors, not learned weights, and are
-capped so they cannot dominate the trained models.
+The market model is 64–66% accurate, so the chance is an estimate with real error bars.
+Partner income is not in the data. The levels are archetypes, and the bands are relative
+to your own best cell.
