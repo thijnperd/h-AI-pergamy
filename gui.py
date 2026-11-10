@@ -220,6 +220,8 @@ document.getElementById("mode").addEventListener("change", (e) => {
 });
 
 const num = (id) => Number(document.getElementById(id).value);
+const many = (id) => Array.from({length: document.getElementById(id + "_0") ? 6 : 0},
+  (_, i) => Number(document.getElementById(id + "_" + i).value));
 
 function payload() {
   return {
