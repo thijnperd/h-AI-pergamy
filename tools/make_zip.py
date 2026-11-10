@@ -25,6 +25,7 @@ MANIFEST = [
     "profile.py",
     "route.py",
     "adult.py",
+    "likes.py",
     "predict.py",
     "train.py",
     "data/population_priors.json",
@@ -34,6 +35,8 @@ MANIFEST = [
     "weights_deep_women.json",
     "weights_market_men.json",
     "weights_market_women.json",
+    "weights_likes_men.json",
+    "weights_likes_women.json",
     "weights_young.json",
     # the charts the README embeds
     "hypergamy_map.svg",
