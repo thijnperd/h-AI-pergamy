@@ -66,7 +66,7 @@ def compute(payload):
     profile["mode"] = payload.get("mode", "regular")
     profile["body_type"] = payload.get("body_type", "average")
     profile["ethnicity"] = payload.get("ethnicity", "not specified")
-    profile["education"] = payload.get("education", "bachelor")
+    profile["education"] = payload.get("education") or ""
     profile["same_race"] = bool(payload.get("same_race", True))
     profile["orientation_match"] = bool(payload.get("orientation_match", True))
     partner = 0 if payload.get("partner_gender", "women") == "women" else 1
@@ -332,7 +332,7 @@ PAGE = r"""<!doctype html>
         Nothing leaves this machine.</p></div>
   </div>
   <div class="header-meta"><span class="pill local">local only</span>
-    <span class="pill">v1.4.0</span><span class="pill">trained + measured</span></div>
+    <span class="pill">v1.4.1</span><span class="pill">trained + measured</span></div>
 </header>
 <main class="shell">
   <section class="panel form-panel" aria-labelledby="profile-title">
@@ -411,12 +411,14 @@ PAGE = r"""<!doctype html>
         <div class="help">used only for the measured ACS couple context; it is not a
           trait score and it does not change the trained date decision.</div></div>
       <div style="margin-top:10px"><label for="education">education (optional)</label>
-        <select id="education"><option value="high school or less">high school or less</option>
+        <select id="education"><option value="" selected>not specified</option>
+          <option value="high school or less">high school or less</option>
           <option value="some college">some college</option>
-          <option value="bachelor" selected>bachelor</option>
+          <option value="bachelor">bachelor</option>
           <option value="graduate">graduate</option></select>
-        <div class="help">used only for the measured ACS same-education context; it does
-          not enter the trained date decision.</div></div>
+        <div class="help">optional: used only for the measured ACS same-education context.
+          Leave it as not specified to use the overall table; it never enters the trained
+          date decision.</div></div>
       <label style="margin-top:10px"><input id="same_race" type="checkbox" checked
         style="width:auto"> same race as the date</label>
     </div>

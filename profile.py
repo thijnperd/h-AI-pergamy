@@ -66,7 +66,7 @@ DEFAULTS = {
     "same_race": True,
     "age_gap": 3.0,
     "partner_income": 50000.0,
-    "education": "bachelor",
+    "education": "",
 
     # adult
     "orientation_match": True,

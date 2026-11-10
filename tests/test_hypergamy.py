@@ -334,6 +334,18 @@ class PartnerAndCalibrationTest(unittest.TestCase):
         self.assertIsNotNone(cell)
         self.assertGreater(cell["n"], 0)
 
+    def test_education_is_optional(self):
+        result = run({**MY_PROFILE, "education": ""})
+        self.assertIsNone(result["market_context"]["education_cell"])
+        self.assertEqual(result["market_context"]["education"], "")
+        self.assertTrue(result["partner"]["available"])
+
+    def test_missing_education_falls_back_to_overall(self):
+        payload = {k: v for k, v in MY_PROFILE.items() if k != "education"}
+        result = run(payload)
+        self.assertIsNone(result["market_context"]["education_cell"])
+        self.assertTrue(result["partner"]["available"])
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
