@@ -165,7 +165,7 @@ PAGE = r"""<!doctype html>
 </style></head><body>
 <header>
   <h1>HYPERGAMY</h1>
-  <p>chance of a mutual yes &middot; hypergamy percentile &middot; competitor rank &mdash;
+  <p>chance of a mutual yes &middot; reaching &middot; attractiveness &mdash;
      all from saved weights, nothing leaves this machine</p>
 </header>
 <main>
@@ -338,8 +338,9 @@ function render(r) {
   const adj = r.adjustments.length ? `<h2 style="margin-top:16px">Adjustments</h2>
     <table>${r.adjustments.map(a =>
       `<tr><td>${a.label}</td><td>${a.pp > 0 ? "+" : ""}${a.pp.toFixed(1)} pp &nbsp;[${a.basis}]</td></tr>`).join("")}</table>` : "";
-  const hyper = r.hypergamy ? `<h2 style="margin-top:16px">Hypergamy</h2>
-    <p style="margin:0">${r.hypergamy.percentile.toFixed(1)} / 100 among ${r.gender === "man" ? "men" : "women"}.
+  const hyper = r.hypergamy ? `<h2 style="margin-top:16px">Ambition vs looks</h2>
+    <p style="margin:0">${r.hypergamy.percentile.toFixed(1)} / 100 among ${r.gender === "man" ? "men" : "women"}:
+    how much importance you put on ambition compared with looks.
     Your tilt ${r.hypergamy.you_tilt.toFixed(0)}/100, the partner you want ${r.hypergamy.partner_tilt.toFixed(0)}/100.</p>` : "";
   const market = r.market ? `<h2 style="margin-top:16px">The market</h2>
     <p style="margin:0">Score ${r.market.score.toFixed(0)}/100, top ${(100 - r.market.rank).toFixed(0)}%
@@ -353,23 +354,23 @@ function render(r) {
       const mine = (i === r.map.your_level - 1 && j === r.map.best_level - 1) ? " mine" : "";
       return `<div class="mapcell${mine}" style="background:${bg}" title="M${i + 1} x W${j + 1}: ${(v * 100).toFixed(0)}%">${(v * 100).toFixed(0)}</div>`;
     }).join("") + `</div>`).join("");
-    const bands = r.map.bands.map(b => `<li>level ${b.level}: ${(b.mutual * 100).toFixed(0)}% mutual &mdash; ${b.band}</li>`).join("");
+    const bands = r.map.bands.map(b => `<li>package ${b.level}: ${(b.mutual * 100).toFixed(0)}% mutual &mdash; ${b.band}</li>`).join("");
     return `<h2 style="margin-top:16px">Who you can reach</h2>
-      <p class="muted" style="margin:0 0 8px">rows are men, columns are women, each cell is the chance you both say yes. M1-M10 and W1-W10 are ten made-up levels, not ten real people.</p>
+      <p class="muted" style="margin:0 0 8px">rows are men, columns are women, each cell is the chance you both say yes. M1-M10 and W1-W10 are ten made-up packages (looks, age and income moving together), not ten real people and not a score out of ten.</p>
       ${grid}
       <div class="arrows">${r.map.arrows}</div>
       <h2 style="margin-top:16px">In plain numbers</h2>
       <table>
         <tr><td><b>attractiveness</b> &mdash; dates who would say yes to you</td>
           <td>${(r.p_them * 100).toFixed(0)}%</td></tr>
-        <tr><td>your chance at your own level (${r.map.your_level})</td>
+        <tr><td>your chance at your own package (${r.map.your_level})</td>
           <td>${(r.map.chance_your_level * 100).toFixed(0)}%</td></tr>
-        <tr><td>your best level (${r.map.best_level}), the easiest to reach</td>
+        <tr><td>your best-fitting package (${r.map.best_level}), the easiest to reach</td>
           <td>${(r.map.chance * 100).toFixed(0)}%</td></tr>
-        <tr><td>middle-of-the-road level 5</td>
+        <tr><td>a middle package (5)</td>
           <td>${(r.map.chance_typical * 100).toFixed(0)}%</td></tr>
-        <tr><td>hypergamy &mdash; how much you weight looks vs status (-10 to +10)</td>
-          <td>${r.map.hypergamy.toFixed(1)}</td></tr>
+        <tr><td>reaching &mdash; how far above your own ratings you aim (-10 to +10)</td>
+          <td>${r.map.hypergamy >= 0 ? "+" : ""}${r.map.hypergamy.toFixed(1)}</td></tr>
       </table>
       <ul>${bands}</ul>`;
   })() : "";
@@ -392,14 +393,18 @@ function render(r) {
     <details class="explain"><summary>What these numbers mean</summary>
       <p><b>both say yes</b> — the chance that you and this kind of person both want a second
       date. <b>they say yes</b> comes from the market model, <b>you say yes</b> from the taste model.</p>
+      <p><b>packages</b> — the ten rows and columns are made-up bundles of looks, age and
+      income, numbered 1 to 10. Package 10 is not "the perfect woman", it is just the top
+      rung the model builds; every package has roughly 10% of the market.</p>
+      <p><b>reaching</b> — how far above your own ratings you aim, from -10 to +10.
+      Rate yourself 0 everywhere and want 10s and it is +10; be a 10 who wants 0s and it is
+      -10. It is not a judgement, just the gap between what you offer and what you look for.</p>
       <p><b>attractiveness</b> — how many dates in the study pool would say yes to you,
       according to the market model. It is about 64% accurate, so read it as a rough market
-      estimate, not as a score of your worth. "Rank vs levels" is different: it compares you
+      estimate, not as a score of your worth. "Rank vs packages" is different: it compares you
       with the ten made-up packages, and it is not a rating of you either.</p>
-      <p><b>bands</b> — every level is compared to your best cell: 60% or more is likely,
+      <p><b>bands</b> — every package is compared to your best cell: 60% or more is likely,
       25% to 60% is stretch, below 25% is hard.</p>
-      <p><b>hypergamy</b> — how much you weight ambition against looks, from -10 to +10.
-      Negative means looks matter more to you, positive means status does.</p>
     </details>
     <h2 style="margin-top:16px">Models used</h2>
     <p class="muted" style="margin:0 0 6px">${r.routing}</p>
