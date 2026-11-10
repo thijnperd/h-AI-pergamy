@@ -1,9 +1,9 @@
 """What kind of woman likes what kind of man, and the other way round.
 
 The taste model answers "will I say yes to this date" from the rater's stated
-importance weights and the date's ratings. The two `likes` models add the
-rater's own ratings as well (feature set `dyad`, target `dec`), so the answer
-can depend on who is doing the choosing, not only on who is being chosen.
+importance weights and the date's ratings. The two `likes` models add the rater's own
+ratings as well (feature set `dyad`, target `dec`), so the answer can depend on
+who is doing the choosing, not only on who is being chosen.
 
 `tables()` fills two 10x10 grids: rows are the ten male packages, columns the
 ten female packages. One grid is P(she says yes), one is P(he says yes), and
@@ -13,7 +13,6 @@ say yes to you.
 
     python likes.py --matrix        # both grids and the mutual grid
     python likes.py --demo          # a default profile: who likes you most
-    python likes.py --payload '{"gender":"man",...}'
 
 The packages are built from self-ratings, while the study rates the date from
 the outside. Using a package's self-rating as the date's rating is the same
@@ -60,13 +59,24 @@ def who_likes_you(profile, gender, partner_gender):
     their = np.array([p_yes(partner_gender, profile, target) for target in targets])
     yours = np.array([p_yes(gender, target, profile) for target in targets])
     order = np.argsort(-their)
+    best = int(order[0])
+    threshold = max(0.50, 0.80 * float(their[best]))
+    inside = np.where(their >= threshold)[0]
+    if len(inside) == 0:
+        inside = np.array([best])
     return {
         "their_yes": their,
         "your_yes": yours,
         "mutual": their * yours,
         "order": order,
-        "best": int(order[0]) + 1,
-        "best_chance": float(their[order[0]]),
+        "best": best + 1,
+        "best_chance": float(their[best]),
+        "range": [int(k) + 1 for k in inside],
+        "range_low": int(inside[0]) + 1,
+        "range_high": int(inside[-1]) + 1,
+        "range_low_chance": float(their[inside[0]]),
+        "range_high_chance": float(their[inside[-1]]),
+        "range_threshold": float(threshold),
     }
 
 
@@ -112,6 +122,8 @@ def main():
                       f"  {100 * out['mutual'][k]:>5.1f}%")
             print(f"  most likely to like you: package {out['best']}"
                   f" ({100 * out['best_chance']:.0f}%)")
+            print(f"  range most likely to say yes: packages {out['range_low']}-"
+                  f"{out['range_high']}")
 
     if args.payload:
         import json
@@ -134,6 +146,8 @@ def main():
                   f"  {100 * out['mutual'][k]:>5.1f}%")
         print(f"  most likely to like you: package {out['best']}"
               f" ({100 * out['best_chance']:.0f}%)")
+        print(f"  range most likely to say yes: packages {out['range_low']}-"
+              f"{out['range_high']}")
 
 
 if __name__ == "__main__":
