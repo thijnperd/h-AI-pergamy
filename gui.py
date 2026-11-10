@@ -89,6 +89,7 @@ def compute(payload):
         "verdict": hypergamy_map.verdict(mapped),
         "arrows": hypergamy_map.arrows_svg(mapped),
         "same_gender": mapped["same_gender"],
+        "attractiveness": mapped["their_yes"],
     }
 
     if have_data():
@@ -354,10 +355,22 @@ function render(r) {
     }).join("") + `</div>`).join("");
     const bands = r.map.bands.map(b => `<li>level ${b.level}: ${(b.mutual * 100).toFixed(0)}% mutual &mdash; ${b.band}</li>`).join("");
     return `<h2 style="margin-top:16px">Who you can reach</h2>
-      <p class="muted" style="margin:0 0 8px">rows are men, columns are women; the box is your best cell</p>
+      <p class="muted" style="margin:0 0 8px">rows are men, columns are women, each cell is the chance you both say yes. M1-M10 and W1-W10 are ten made-up levels, not ten real people.</p>
       ${grid}
       <div class="arrows">${r.map.arrows}</div>
-      <p class="muted" style="margin:8px 0 0">hypergamy ${r.map.hypergamy.toFixed(1)} of 10 &middot; attractiveness ${r.map.percentile.toFixed(0)} of 100 vs competitors &middot; best ${(r.map.chance * 100).toFixed(1)}% at level ${r.map.best_level} &middot; your own level ${(r.map.chance_your_level * 100).toFixed(1)}% &middot; level 5 ${(r.map.chance_typical * 100).toFixed(1)}%</p>
+      <h2 style="margin-top:16px">In plain numbers</h2>
+      <table>
+        <tr><td><b>attractiveness</b> &mdash; dates who would say yes to you</td>
+          <td>${(r.p_them * 100).toFixed(0)}%</td></tr>
+        <tr><td>your chance at your own level (${r.map.your_level})</td>
+          <td>${(r.map.chance_your_level * 100).toFixed(0)}%</td></tr>
+        <tr><td>your best level (${r.map.best_level}), the easiest to reach</td>
+          <td>${(r.map.chance * 100).toFixed(0)}%</td></tr>
+        <tr><td>middle-of-the-road level 5</td>
+          <td>${(r.map.chance_typical * 100).toFixed(0)}%</td></tr>
+        <tr><td>hypergamy &mdash; how much you weight looks vs status (-10 to +10)</td>
+          <td>${r.map.hypergamy.toFixed(1)}</td></tr>
+      </table>
       <ul>${bands}</ul>`;
   })() : "";
 
@@ -369,7 +382,7 @@ function render(r) {
     ${r.map ? `<div class="verdict">${r.map.verdict}</div>` : ""}
     <div class="big">
       <div><span>both say yes</span><b>${pct(r.mutual)}</b><small>the number that matters</small></div>
-      <div><span>they say yes</span><b>${pct(r.p_them)}</b><small>their side, market model</small></div>
+      <div><span>they say yes</span><b>${pct(r.p_them)}</b><small>your attractiveness score</small></div>
       <div><span>you say yes</span><b>${pct(r.p_you)}</b><small>your side, taste model</small></div>
     </div>
     ${adj}${hyper}${market}${map}
@@ -379,13 +392,14 @@ function render(r) {
     <details class="explain"><summary>What these numbers mean</summary>
       <p><b>both say yes</b> — the chance that you and this kind of person both want a second
       date. <b>they say yes</b> comes from the market model, <b>you say yes</b> from the taste model.</p>
+      <p><b>attractiveness</b> — how many dates in the study pool would say yes to you,
+      according to the market model. It is about 64% accurate, so read it as a rough market
+      estimate, not as a score of your worth. "Rank vs levels" is different: it compares you
+      with the ten made-up packages, and it is not a rating of you either.</p>
       <p><b>bands</b> — every level is compared to your best cell: 60% or more is likely,
       25% to 60% is stretch, below 25% is hard.</p>
       <p><b>hypergamy</b> — how much you weight ambition against looks, from -10 to +10.
       Negative means looks matter more to you, positive means status does.</p>
-      <p><b>attractiveness</b> — how many of the ten same-gender packages the market model
-      scores below you. 100 of 100 means none of the ten beats you on that model, which is
-      about 66% accurate: read it as a rank among ten archetypes, not as a rating of you.</p>
     </details>
     <h2 style="margin-top:16px">Models used</h2>
     <p class="muted" style="margin:0 0 6px">${r.routing}</p>
