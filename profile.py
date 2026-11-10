@@ -59,7 +59,7 @@ DEFAULTS = {
     "want": [8.0, 6.0, 7.0, 8.0, 9.0, 7.0],
     "importance": [30.0, 10.0, 15.0, 15.0, 20.0, 10.0],
     # advanced
-    "height_in": 70.0,
+    "height_cm": 178.0,
     "body_type": "average",
     "same_race": True,
     "age_gap": 3.0,
@@ -68,8 +68,9 @@ DEFAULTS = {
     "orientation_match": True,
     "kink_match": 3.0,
     "libido_match": 3.0,
-    "genital": 3.0,
-    "cup": 3.0,
+    "size_cm": 13.1,
+    "cup": "C",
+    "partner_body": "average",
     "experience": 3.0,
 }
 
@@ -250,12 +251,14 @@ def report(profile, gender, name=""):
     print(f"  you want           " + "  ".join(f"{p} {v:.0f}" for p, v in zip(PRETTY, profile["want"])))
     print(f"  stated importance  " + "  ".join(f"{p} {v:.0f}%" for p, v in zip(PRETTY, profile["importance"])))
     if mode in ("advanced", "adult"):
-        print(f"  what you are       {profile.get('height_in', 0):.0f} in, "
+        print(f"  what you are       {profile.get('height_cm', 0):.0f} cm, "
               f"{profile.get('body_type', '?')}, age gap {profile.get('age_gap', 0):.0f} yrs, "
               f"{'same race' if profile.get('same_race') else 'different race'}")
     if mode == "adult":
-        print(f"  adult layer        kink match {profile['kink_match']:.0f}/5, "
-              f"libido {profile['libido_match']:.0f}/5, experience {profile['experience']:.0f}/5")
+        print(f"  adult layer        kink {profile['kink_match']:.0f}/5, "
+              f"libido {profile['libido_match']:.0f}/5, size {profile['size_cm']:.1f} cm, "
+              f"partner {profile['partner_body']} / {profile['cup']}, "
+              f"experience {profile['experience']:.0f}/5")
     print()
     print(f"  a date says yes to you    {r['p_them']:5.1%}  {bar(r['p_them'])}")
     print(f"  you say yes to them       {r['p_you']:5.1%}  {bar(r['p_you'])}")
@@ -301,13 +304,14 @@ def demo(chart=False):
             "want": [9.0, 7.0, 6.0, 9.0, 6.0, 6.0],
             "importance": [40.0, 10.0, 5.0, 25.0, 10.0, 10.0]},
            0, "regular: the 23-year-old who wants a 10/10")
-    report({**base, "mode": "advanced", "age": 27.0, "income": 58000.0, "height_in": 72.0,
+    report({**base, "mode": "advanced", "age": 27.0, "income": 58000.0, "height_cm": 183.0,
             "body_type": "athletic", "age_gap": 4.0,
             "want": [7.0, 7.0, 7.0, 7.0, 8.0, 8.0],
             "importance": [25.0, 15.0, 15.0, 15.0, 20.0, 10.0]},
            1, "advanced: the 27-year-old who wants a peer")
-    report({**base, "mode": "adult", "age": 25.0, "income": 42000.0, "height_in": 69.0,
+    report({**base, "mode": "adult", "age": 25.0, "income": 42000.0, "height_cm": 175.0,
             "body_type": "curvy", "age_gap": 2.0, "kink_match": 5.0, "libido_match": 4.0,
+            "size_cm": 16.0, "cup": "D", "partner_body": "athletic",
             "experience": 4.0, "same_race": False,
             "want": [8.0, 7.0, 8.0, 8.0, 7.0, 9.0],
             "importance": [30.0, 15.0, 15.0, 15.0, 15.0, 10.0]},
@@ -336,14 +340,16 @@ def main():
     p.add_argument("--self", dest="self_")
     p.add_argument("--want")
     p.add_argument("--importance")
-    p.add_argument("--height", type=float, help="inches")
+    p.add_argument("--height", type=float, help="your height in cm")
     p.add_argument("--body", default="average", choices=adult.BODY_TYPES)
     p.add_argument("--age-gap", type=float, dest="age_gap")
     p.add_argument("--different-race", action="store_true")
     p.add_argument("--kink", type=float, help="kink compatibility 0-5")
     p.add_argument("--libido", type=float, help="libido compatibility 0-5")
-    p.add_argument("--genital", type=float, help="self-reported 1-5")
-    p.add_argument("--cup", type=float, help="partner build 1-5")
+    p.add_argument("--size", type=float, help="your size in cm")
+    p.add_argument("--cup", default="C", choices=adult.CUP_SIZES, help="partner chest size")
+    p.add_argument("--partner-body", default="average", choices=adult.BODY_TYPES,
+                   dest="partner_body", help="partner build")
     p.add_argument("--experience", type=float, help="0-5")
     p.add_argument("--mismatch", action="store_true", help="orientation outside their pool")
     p.add_argument("--chart", action="store_true")
@@ -365,10 +371,15 @@ def main():
 
     profile = dict(DEFAULTS)
     profile["mode"] = args.mode
-    for key in ("age", "income", "goal", "height", "age_gap", "kink", "libido",
-                "genital", "cup", "experience"):
+    for key in ("age", "income", "goal", "age_gap", "kink", "libido", "experience"):
         if getattr(args, key) is not None:
             profile[key] = getattr(args, key)
+    if args.height is not None:
+        profile["height_cm"] = args.height
+    if args.size is not None:
+        profile["size_cm"] = args.size
+    profile["cup"] = args.cup
+    profile["partner_body"] = args.partner_body
     profile["body_type"] = args.body
     profile["same_race"] = not args.different_race
     profile["orientation_match"] = not args.mismatch
