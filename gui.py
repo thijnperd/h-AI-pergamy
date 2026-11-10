@@ -25,6 +25,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import numpy as np
 
 import adult
+import hypergamy_map
 import route
 from profile import DEFAULTS, competitors, have_data, stated_hypergamy
 
@@ -67,6 +68,18 @@ def compute(payload):
         "routing": route.explain(profile["age"], profile["mode"], gender)["reason"],
         "hypergamy": None,
         "market": None,
+    }
+
+    mapped = hypergamy_map.partner_map(profile, gender)
+    result["map"] = {
+        "matrix": [[round(float(v), 4) for v in row] for row in mapped["matrix"]],
+        "your_probs": [round(float(v), 4) for v in mapped["your_probs"]],
+        "best_level": mapped["best_level"],
+        "your_level": mapped["your_level"],
+        "bands": mapped["bands"],
+        "chance": mapped["chance"],
+        "percentile": mapped["percentile"],
+        "hypergamy": mapped["hypergamy"],
     }
 
     if have_data():
@@ -125,6 +138,9 @@ PAGE = r"""<!doctype html>
   ul { margin:6px 0 0; padding-left:16px; font-size:12.5px; color:var(--grey); }
   .muted { color:var(--grey); font-size:12.5px; }
   .err { color:#b00020; font-size:13px; }
+  .maprow { display:grid; grid-template-columns:repeat(10,1fr); gap:2px; margin-bottom:2px; }
+  .mapcell { font-size:9px; text-align:center; color:#555; padding:3px 0; border-radius:2px; }
+  .mapcell.mine { outline:2px solid #111; font-weight:700; color:#111; }
 </style></head><body>
 <header>
   <h1>HYPERGAMY</h1>
@@ -252,6 +268,22 @@ function render(r) {
     <p style="margin:0">Score ${r.market.score.toFixed(0)}/100, top ${(100 - r.market.rank).toFixed(0)}%
     of ${r.market.n.toLocaleString()} competitors whose stated wants resemble your partner.</p>`
     : `<p class="muted" style="margin-top:14px">Competitor rank needs data/ &mdash; run data/build.py.</p>`;
+  const map = r.map ? (() => {
+    const max = Math.max(...r.map.matrix.flat(), 1e-9);
+    const grid = r.map.matrix.map((row, i) => `<div class="maprow">` + row.map((v, j) => {
+      const t = v / max;
+      const bg = `rgb(${Math.round(255 - 61 * t)},${Math.round(255 - 231 * t)},${Math.round(255 - 164 * t)})`;
+      const mine = (i === r.map.your_level - 1 && j === r.map.best_level - 1) ? " mine" : "";
+      return `<div class="mapcell${mine}" style="background:${bg}" title="M${i + 1} x W${j + 1}: ${(v * 100).toFixed(0)}%">${(v * 100).toFixed(0)}</div>`;
+    }).join("") + `</div>`).join("");
+    const bands = r.map.bands.map(b => `<li>level ${b.level}: ${(b.mutual * 100).toFixed(0)}% mutual &mdash; ${b.band}</li>`).join("");
+    return `<h2 style="margin-top:16px">Who you can reach</h2>
+      <p class="muted" style="margin:0 0 8px">rows are men, columns are women; the box is you</p>
+      ${grid}
+      <p class="muted" style="margin:8px 0 0">hypergamy ${r.map.hypergamy.toFixed(1)}/10 &middot; attractiveness ${r.map.percentile.toFixed(0)}/100 vs competitors &middot; best ${(r.map.chance * 100).toFixed(1)}% at level ${r.map.best_level}</p>
+      <ul>${bands}</ul>`;
+  })() : "";
+
   const models = r.taste_models.concat(r.market_models).map(m =>
     `<li>${m.path}${m.cv ? " &mdash; CV " + (100 * m.cv).toFixed(1) + "%" : ""}
      ${m.arch ? "&mdash; " + m.arch.join("&rarr;") : ""}</li>`).join("");
@@ -262,7 +294,7 @@ function render(r) {
       <div><span>they say yes</span><b>${pct(r.p_them)}</b></div>
       <div><span>you say yes</span><b>${pct(r.p_you)}</b></div>
     </div>
-    ${adj}${hyper}${market}
+    ${adj}${hyper}${market}${map}
     <h2 style="margin-top:16px">Models used</h2>
     <p class="muted" style="margin:0 0 6px">${r.routing}</p>
     <ul>${models}</ul>`;
@@ -331,12 +363,14 @@ class Handler(BaseHTTPRequestHandler):
 
 def main():
     parser = argparse.ArgumentParser(description="local GUI for the HYPERGAMY models")
+    parser.add_argument("--host", default="127.0.0.1",
+                        help="interface to bind (use 0.0.0.0 to expose it)")
     parser.add_argument("--port", type=int, default=8000)
     parser.add_argument("--no-browser", action="store_true")
     args = parser.parse_args()
 
-    server = ThreadingHTTPServer(("127.0.0.1", args.port), Handler)
-    url = f"http://127.0.0.1:{args.port}/"
+    server = ThreadingHTTPServer((args.host, args.port), Handler)
+    url = f"http://{'127.0.0.1' if args.host in ('0.0.0.0', '::') else args.host}:{args.port}/"
     print(f"HYPERGAMY GUI  ->  {url}")
     print("press Ctrl+C to stop")
     if not args.no_browser:
