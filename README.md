@@ -31,30 +31,28 @@ The second chart is the average yes rate at each level for each side:
 
 ## Who you can reach
 
-`python profile.py --range` (and the GUI) classifies the ten levels relative to your own
-best cell: **likely** at 60% or more of it, **stretch** between 25% and 60%, **hard**
-below that. It is a model output with real error bars, not a promise.
+`python profile.py --range` and the GUI classify the ten levels relative to your own best
+cell: **likely** at 60% or more of it, **stretch** between 25% and 60%, **hard** below
+that. It is a model output with real error bars, not a promise.
 
-## How to use it
+## Quick start
 
-```mermaid
-flowchart TD
-    A["1. install Python 3.10+"] --> B["2. pip install -r requirements.txt"]
-    B --> C["3. python gui.py"]
-    C --> D["4. open http://127.0.0.1:8000"]
-    D --> E{"5. pick a mode"}
-    E -- regular --> F["10 numbers"]
-    E -- advanced --> G["+ height, build, age gap"]
-    E -- adult --> H["+ compatibility inputs"]
-    E -- 18-25 --> I["force the young model"]
-    F --> J["6. choose man or woman"]
-    G --> J
-    H --> J
-    I --> J
-    J --> K["7. age, income, goal"]
-    K --> L["8. rate yourself, what you want, what matters"]
-    L --> M["9. press Compute"]
-    M --> N["10. read chance, adjustments, hypergamy"]
-    N --> O["11. read the map and the reach bands"]
-    O --> P["12. Ctrl+C to stop"]
+```bash
+python -m pip install -r requirements.txt   # numpy + matplotlib
+python gui.py                               # http://127.0.0.1:8000
+python hypergamy_map.py                     # the map, the bands, both svg charts
+python profile.py --mode regular --gender 1 --age 24 --income 30000 \
+    --self 7,7,7,7,5 --want 8,6,7,8,9,7 --importance 30,10,15,15,20,10 --range
 ```
+
+Then read [docs/usage.md](docs/usage.md) for the twelve step walkthrough,
+[docs/gui.md](docs/gui.md) for which weights the page loads, and
+[docs/models.md](docs/models.md) for the training table, the datasets and the disk space.
+
+## Limits
+
+The market model is 64–66% accurate, so the chance it prints is an estimate with real
+error bars. Partner income is not in the data, so status is ambition plus your own
+income. The ten levels are archetypes, not people: they rank packages, and a real person
+is never exactly level 7. Compatibility effects are priors, not learned weights, and are
+capped so they cannot dominate the trained models.
