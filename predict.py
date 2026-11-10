@@ -31,7 +31,7 @@ DEFAULTS = {
 PROMPTS = {
     "age": "age (years)",
     "income": "income ($/yr)",
-    "goal": "wants kids? 1-6",
+    "goal": "dating goal 1-6",
     "attr": "attractive 1-10",
     "sinc": "sincere 1-10",
     "intel": "intelligent 1-10",
