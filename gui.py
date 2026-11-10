@@ -36,10 +36,12 @@ def compute(payload):
     """Run one profile through the routed models and return a JSON-able result."""
     gender = 1 if payload.get("gender") == "man" else 0
     profile = dict(DEFAULTS)
-    for key in ("age", "income", "goal", "height_in", "age_gap", "kink_match",
-                "libido_match", "genital", "cup", "experience"):
+    for key in ("age", "income", "goal", "height_cm", "age_gap", "kink_match",
+                "libido_match", "size_cm", "experience"):
         if payload.get(key) is not None:
             profile[key] = float(payload[key])
+    profile["cup"] = payload.get("cup", "C")
+    profile["partner_body"] = payload.get("partner_body", "average")
     for key in ("self", "want", "importance"):
         if isinstance(payload.get(key), list) and len(payload[key]) == len(profile[key]):
             profile[key] = [float(v) for v in payload[key]]
@@ -78,8 +80,12 @@ def compute(payload):
         "your_level": mapped["your_level"],
         "bands": mapped["bands"],
         "chance": mapped["chance"],
+        "chance_your_level": mapped["chance_your_level"],
+        "chance_typical": mapped["chance_typical"],
         "percentile": mapped["percentile"],
         "hypergamy": mapped["hypergamy"],
+        "verdict": hypergamy_map.verdict(mapped),
+        "arrows": hypergamy_map.arrows_svg(mapped),
     }
 
     if have_data():
@@ -107,7 +113,7 @@ PAGE = r"""<!doctype html>
 <style>
   :root { --ink:#111; --grey:#6b6b6b; --pink:#c2185b; --blue:#1b9ad6; --rule:#e6e6e6; }
   * { box-sizing:border-box; }
-  body { margin:0; font:15px/1.45 -apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;
+  body { margin:0; font:16px/1.55 -apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;
          color:var(--ink); background:#fafafa; }
   header { padding:22px 28px 10px; }
   h1 { margin:0; font-size:26px; letter-spacing:.5px; }
@@ -122,8 +128,10 @@ PAGE = r"""<!doctype html>
                   font:inherit; background:#fff; }
   .row { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
   .row3 { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; }
-  .grid6 { display:grid; grid-template-columns:repeat(6,1fr); gap:6px; }
-  .grid6 input { padding:4px; text-align:center; }
+  .grid6 { display:grid; grid-template-columns:repeat(3,1fr); gap:8px 10px; }
+  .grid6 .caption { font-size:11px; margin-bottom:2px; }
+  input[type=range] { padding:0; border:0; background:transparent; accent-color:var(--pink); }
+  .val { text-align:center; font-weight:600; font-size:12.5px; margin-top:-2px; }
   .caption { font-size:11px; color:var(--grey); text-align:center; }
   button { margin-top:16px; width:100%; padding:11px; border:0; border-radius:8px;
            background:var(--pink); color:#fff; font:600 15px/1 inherit; cursor:pointer; }
@@ -141,6 +149,15 @@ PAGE = r"""<!doctype html>
   .maprow { display:grid; grid-template-columns:repeat(10,1fr); gap:2px; margin-bottom:2px; }
   .mapcell { font-size:9px; text-align:center; color:#555; padding:3px 0; border-radius:2px; }
   .mapcell.mine { outline:2px solid #111; font-weight:700; color:#111; }
+  .help { font-size:11px; color:#8a8a8a; line-height:1.3; margin-top:3px; }
+  .verdict { background:#fdf0f5; border:1px solid #f3d4e1; border-radius:10px;
+             padding:13px 15px; font-size:14.5px; margin-bottom:14px; }
+  .arrows { margin-top:12px; border:1px solid #f0f0f0; border-radius:8px; padding:4px 6px; }
+  .big small { display:block; font-size:10px; color:#8a8a8a; margin-top:2px;
+               text-transform:none; letter-spacing:0; }
+  details.explain { margin-top:16px; font-size:12.5px; color:#555; }
+  details.explain summary { cursor:pointer; color:var(--pink); font-weight:600; }
+  details.explain p { margin:8px 0 0; }
 </style></head><body>
 <header>
   <h1>HYPERGAMY</h1>
@@ -162,30 +179,48 @@ PAGE = r"""<!doctype html>
         <select id="gender"><option value="man">man</option><option value="woman">woman</option></select></div>
     </div>
     <div class="row3">
-      <div><label for="age">age</label><input id="age" type="number" value="24" min="18" max="80"></div>
+      <div><label for="age">age <b id="age_v">24</b></label>
+        <input id="age" type="range" min="18" max="80" value="24"
+          oninput="document.getElementById('age_v').textContent=this.value"></div>
       <div><label for="income">income $/yr</label><input id="income" type="number" value="32000" step="1000"></div>
-      <div><label for="goal">goal (1-6)</label><input id="goal" type="number" value="4" min="1" max="6"></div>
+      <div><label for="goal">goal <b id="goal_v">4</b> / 6</label>
+        <input id="goal" type="range" min="1" max="6" value="4"
+          oninput="document.getElementById('goal_v').textContent=this.value">
+        <div class="help">the study codes 4 as a serious relationship</div></div>
     </div>
 
     <h2 style="margin-top:18px">How you rate yourself</h2>
+    <p class="help" style="margin:0 0 8px">0 = terrible · 5 = average · 10 = perfect.
+      Higher is better: 8 is better than 4.</p>
     <div class="grid6" id="self"></div>
 
     <h2 style="margin-top:18px">What you want</h2>
+    <p class="help" style="margin:0 0 8px">the looks/sincerity/... you would like a date to have,
+      same 0-10 scale, 10 = perfect</p>
     <div class="grid6" id="want"></div>
 
-    <h2 style="margin-top:18px">How much it matters (%)</h2>
+    <h2 style="margin-top:18px">How much each thing matters</h2>
+    <p class="help" style="margin:0 0 8px">0% = does not matter, 100% = the only thing that matters.
+      The weights are rescaled, so they do not have to add up to 100.</p>
     <div class="grid6" id="importance"></div>
 
     <div id="advanced" hidden>
       <h2 style="margin-top:18px">Advanced</h2>
       <div class="row3">
-        <div><label for="height_in">height (in)</label><input id="height_in" type="number" value="70"></div>
-        <div><label for="body_type">build</label>
+        <div><label for="height_cm">height <b id="height_cm_v">178</b> cm</label>
+          <input id="height_cm" type="range" min="140" max="210" value="178"
+            oninput="document.getElementById('height_cm_v').textContent=this.value">
+          <div class="help">178 cm = 5 ft 10</div></div>
+        <div><label for="body_type">your build</label>
           <select id="body_type">
             <option>thin</option><option>athletic</option><option selected>average</option>
             <option>curvy</option><option>full figured</option><option>a little extra</option>
-          </select></div>
-        <div><label for="age_gap">age gap (yrs)</label><input id="age_gap" type="number" value="3"></div>
+          </select>
+          <div class="help">thin = narrow · athletic = fit · average = neither · curvy = waist and
+            hips · full figured = soft · a little extra = heavier</div></div>
+        <div><label for="age_gap">age gap <b id="age_gap_v">3</b> yrs</label>
+          <input id="age_gap" type="range" min="0" max="20" value="3"
+            oninput="document.getElementById('age_gap_v').textContent=this.value"></div>
       </div>
       <label style="margin-top:10px"><input id="same_race" type="checkbox" checked
         style="width:auto"> same race as the date</label>
@@ -194,16 +229,37 @@ PAGE = r"""<!doctype html>
     <div id="adult" hidden>
       <h2 style="margin-top:18px">Adult layer</h2>
       <div class="row3">
-        <div><label for="kink_match">kink match 0-5</label><input id="kink_match" type="number" value="3" min="0" max="5"></div>
-        <div><label for="libido_match">libido 0-5</label><input id="libido_match" type="number" value="3" min="0" max="5"></div>
-        <div><label for="genital">size 1-5</label><input id="genital" type="number" value="3" min="1" max="5"></div>
+        <div><label for="kink_match">kink match <b id="kink_match_v">3</b> / 5</label>
+          <input id="kink_match" type="range" min="0" max="5" value="3"
+            oninput="document.getElementById('kink_match_v').textContent=this.value">
+          <div class="help">0 = opposite, 5 = identical</div></div>
+        <div><label for="libido_match">libido match <b id="libido_match_v">3</b> / 5</label>
+          <input id="libido_match" type="range" min="0" max="5" value="3"
+            oninput="document.getElementById('libido_match_v').textContent=this.value">
+          <div class="help">0 = opposite, 5 = identical</div></div>
+        <div><label for="size_cm">your size <b id="size_cm_v">13.1</b> cm</label>
+          <input id="size_cm" type="range" min="8" max="18" step="0.1" value="13.1"
+            oninput="document.getElementById('size_cm_v').textContent=(+this.value).toFixed(1)">
+          <div class="help">13.1 cm is the population median</div></div>
       </div>
       <div class="row3">
-        <div><label for="cup">partner build 1-5</label><input id="cup" type="number" value="3" min="1" max="5"></div>
-        <div><label for="experience">experience 0-5</label><input id="experience" type="number" value="3" min="0" max="5"></div>
-        <div><label>&nbsp;</label><label><input id="orientation_match" type="checkbox" checked
-          style="width:auto"> in their pool</label></div>
+        <div><label for="cup">partner chest</label>
+          <select id="cup"><option>A</option><option>B</option><option selected>C</option>
+            <option>D</option><option>DD/E</option><option>F or larger</option></select>
+          <div class="help">A small · C medium · F very large</div></div>
+        <div><label for="partner_body">partner build</label>
+          <select id="partner_body"><option>thin</option><option>athletic</option>
+            <option selected>average</option><option>curvy</option>
+            <option>full figured</option><option>a little extra</option></select>
+          <div class="help">same scale as your build</div></div>
+        <div><label for="experience">experience <b id="experience_v">3</b> / 5</label>
+          <input id="experience" type="range" min="0" max="5" value="3"
+            oninput="document.getElementById('experience_v').textContent=this.value">
+          <div class="help">0 = none, 5 = a lot</div></div>
       </div>
+      <label style="margin-top:10px"><input id="orientation_match" type="checkbox" checked
+        style="width:auto"> in their pool</label>
+      <div class="help">uncheck if you are outside the group they usually date</div>
     </div>
 
     <button id="run">Compute</button>
@@ -218,16 +274,19 @@ PAGE = r"""<!doctype html>
 <script>
 const NAMES = ["looks","sincerity","intelligence","fun","ambition"];
 const WANT = ["looks","sincerity","intelligence","fun","ambition","shared taste"];
-const DEF_SELF = [7,7,7,7,5], DEF_WANT = [8,6,7,8,9,7], DEF_IMP = [30,10,15,15,20,10];
+const DEF_SELF = [5,5,5,5,3], DEF_WANT = [6,6,6,6,6,6], DEF_IMP = [30,10,15,15,20,10];
 
-function grid(id, names, values) {
+function grid(id, names, values, min, max, step, suffix) {
   document.getElementById(id).innerHTML = names.map((n, i) =>
     `<div><div class="caption">${n}</div>
-     <input id="${id}_${i}" type="number" min="0" max="100" value="${values[i]}"></div>`).join("");
+     <input id="${id}_${i}" type="range" min="${min}" max="${max}" step="${step}"
+       value="${values[i]}"
+       oninput="document.getElementById('${id}_${i}_v').textContent=this.value+'${suffix}'">
+     <div class="val" id="${id}_${i}_v">${values[i]}${suffix}</div></div>`).join("");
 }
-grid("self", NAMES, DEF_SELF);
-grid("want", WANT, DEF_WANT);
-grid("importance", WANT, DEF_IMP);
+grid("self", NAMES, DEF_SELF, 0, 10, 1, "");
+grid("want", WANT, DEF_WANT, 0, 10, 1, "");
+grid("importance", WANT, DEF_IMP, 0, 100, 5, "%");
 
 document.getElementById("mode").addEventListener("change", (e) => {
   const m = e.target.value;
@@ -236,8 +295,6 @@ document.getElementById("mode").addEventListener("change", (e) => {
 });
 
 const num = (id) => Number(document.getElementById(id).value);
-const many = (id) => Array.from({length: document.getElementById(id + "_0") ? 6 : 0},
-  (_, i) => Number(document.getElementById(id + "_" + i).value));
 
 function payload() {
   return {
@@ -247,10 +304,12 @@ function payload() {
     self: [0,1,2,3,4].map(i => Number(document.getElementById("self_" + i).value)),
     want: [0,1,2,3,4,5].map(i => Number(document.getElementById("want_" + i).value)),
     importance: [0,1,2,3,4,5].map(i => Number(document.getElementById("importance_" + i).value)),
-    height_in: num("height_in"), body_type: document.getElementById("body_type").value,
+    height_cm: num("height_cm"), body_type: document.getElementById("body_type").value,
     age_gap: num("age_gap"), same_race: document.getElementById("same_race").checked,
     kink_match: num("kink_match"), libido_match: num("libido_match"),
-    genital: num("genital"), cup: num("cup"), experience: num("experience"),
+    size_cm: num("size_cm"), cup: document.getElementById("cup").value,
+    partner_body: document.getElementById("partner_body").value,
+    experience: num("experience"),
     orientation_match: document.getElementById("orientation_match").checked
   };
 }
@@ -278,9 +337,10 @@ function render(r) {
     }).join("") + `</div>`).join("");
     const bands = r.map.bands.map(b => `<li>level ${b.level}: ${(b.mutual * 100).toFixed(0)}% mutual &mdash; ${b.band}</li>`).join("");
     return `<h2 style="margin-top:16px">Who you can reach</h2>
-      <p class="muted" style="margin:0 0 8px">rows are men, columns are women; the box is you</p>
+      <p class="muted" style="margin:0 0 8px">rows are men, columns are women; the box is your best cell</p>
       ${grid}
-      <p class="muted" style="margin:8px 0 0">hypergamy ${r.map.hypergamy.toFixed(1)}/10 &middot; attractiveness ${r.map.percentile.toFixed(0)}/100 vs competitors &middot; best ${(r.map.chance * 100).toFixed(1)}% at level ${r.map.best_level}</p>
+      <div class="arrows">${r.map.arrows}</div>
+      <p class="muted" style="margin:8px 0 0">hypergamy ${r.map.hypergamy.toFixed(1)} of 10 &middot; attractiveness ${r.map.percentile.toFixed(0)} of 100 vs competitors &middot; best ${(r.map.chance * 100).toFixed(1)}% at level ${r.map.best_level} &middot; your own level ${(r.map.chance_your_level * 100).toFixed(1)}% &middot; level 5 ${(r.map.chance_typical * 100).toFixed(1)}%</p>
       <ul>${bands}</ul>`;
   })() : "";
 
@@ -289,12 +349,24 @@ function render(r) {
      ${m.arch ? "&mdash; " + m.arch.join("&rarr;") : ""}</li>`).join("");
 
   document.getElementById("result").innerHTML = `
+    ${r.map ? `<div class="verdict">${r.map.verdict}</div>` : ""}
     <div class="big">
-      <div><span>both say yes</span><b>${pct(r.mutual)}</b></div>
-      <div><span>they say yes</span><b>${pct(r.p_them)}</b></div>
-      <div><span>you say yes</span><b>${pct(r.p_you)}</b></div>
+      <div><span>both say yes</span><b>${pct(r.mutual)}</b><small>the number that matters</small></div>
+      <div><span>they say yes</span><b>${pct(r.p_them)}</b><small>their side, market model</small></div>
+      <div><span>you say yes</span><b>${pct(r.p_you)}</b><small>your side, taste model</small></div>
     </div>
     ${adj}${hyper}${market}${map}
+    <details class="explain"><summary>What these numbers mean</summary>
+      <p><b>both say yes</b> — the chance that you and this kind of person both want a second
+      date. <b>they say yes</b> comes from the market model, <b>you say yes</b> from the taste model.</p>
+      <p><b>bands</b> — every level is compared to your best cell: 60% or more is likely,
+      25% to 60% is stretch, below 25% is hard.</p>
+      <p><b>hypergamy</b> — how much you weight ambition against looks, from -10 to +10.
+      Negative means looks matter more to you, positive means status does.</p>
+      <p><b>attractiveness</b> — how many of the ten same-gender packages the market model
+      scores below you. 100 of 100 means none of the ten beats you on that model, which is
+      about 66% accurate: read it as a rank among ten archetypes, not as a rating of you.</p>
+    </details>
     <h2 style="margin-top:16px">Models used</h2>
     <p class="muted" style="margin:0 0 6px">${r.routing}</p>
     <ul>${models}</ul>`;
