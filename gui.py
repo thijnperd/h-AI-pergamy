@@ -323,14 +323,14 @@ PAGE = r"""<!doctype html>
   @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after { animation-duration:.01ms !important; transition:none !important; }
   }
-
-  .ico { width:18px; height:18px; vertical-align:-3px; margin-right:7px;
-         stroke:currentColor; fill:none; stroke-width:2; stroke-linecap:round;
-         stroke-linejoin:round; }
-  .ico-lg { width:25px; height:25px; margin-right:9px; }
-  .page-foot { max-width:1080px; margin:0 auto 26px; padding:0 24px;
-               color:var(--grey); font-size:11.5px; line-height:1.5; }
-  .page-foot a { color:var(--pink); }
+
+  .ico { width:18px; height:18px; vertical-align:-3px; margin-right:7px;
+         stroke:currentColor; fill:none; stroke-width:2; stroke-linecap:round;
+         stroke-linejoin:round; }
+  .ico-lg { width:25px; height:25px; margin-right:9px; }
+  .page-foot { max-width:1080px; margin:0 auto 26px; padding:0 24px;
+               color:var(--grey); font-size:11.5px; line-height:1.5; }
+  .page-foot a { color:var(--pink); }
 </style></head><body>
 <header class="site-header">
   <div class="brand">
