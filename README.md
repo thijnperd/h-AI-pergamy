@@ -203,12 +203,13 @@ python profile.py --demo        # three worked examples, one per mode
 python adult.py                 # the effect table, prevalence and sources
 ```
 
-Without the CSVs in the checkout, `profile.py` still runs from the saved weights and
-says which parts it had to skip.
+The trained weights are generated, not committed: each training command above takes
+about a minute, and `profile.py` prints the exact command if a weights file is missing.
+Without the CSVs it still scores a profile from the weights and says which parts it
+skipped.
 
-The repository has two local branches: the code branch (datasets ignored) and
-`with-data`, which force-adds `data/*.csv`. The data files are 1.5 MB and 633 KB, so
-they are kept off the code history.
+`main` carries the code and ignores the generated CSVs. A local `with-data` branch adds
+`data/*.csv` (1.4 MB and 619 KB) when you want them versioned.
 
 ## Is it real?
 
