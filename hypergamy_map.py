@@ -121,10 +121,18 @@ def _bands(probs):
     return bands
 
 
-def partner_map(profile, gender):
-    """Everything the picture and the GUI need for one profile."""
+def partner_map(profile, gender, partner_gender=None):
+    """Everything the picture and the GUI need for one profile.
+
+    `gender` is you and `partner_gender` is who you are interested in. They are two
+    separate inputs, so the app never assumes you are straight or gay. The trained
+    models only ever saw opposite-gender dates, and `same_gender` says when the
+    answer is therefore an extrapolation rather than a measured one.
+    """
     grid = matrix()
-    targets = [archetype(1 - gender, k) for k in range(1, LEVELS + 1)]
+    if partner_gender is None:
+        partner_gender = 1 - gender
+    targets = [archetype(partner_gender, k) for k in range(1, LEVELS + 1)]
     their_yes = p_they_say_yes(profile, gender)
     probs = np.array([
         p_you_say_yes(target, gender, profile["importance"]) * their_yes
@@ -160,28 +168,29 @@ def partner_map(profile, gender):
         "he_curve": he_curve,
         "her_curve": her_curve,
         "gender": gender,
+        "partner_gender": partner_gender,
+        "same_gender": partner_gender == gender,
     }
 
 
 def verdict(result):
     """One plain sentence, so nobody has to read a grid to know where they stand."""
-    gender = result["gender"]
-    target = PLURAL[1 - gender]
+    target = PLURAL[result.get("partner_gender", 1 - result["gender"])]
     chance = result["chance"]
     if chance >= 0.40:
         mood = "good" if chance >= 0.55 else "decent"
     else:
         mood = "low"
+    tail = (f"With a level {result['your_level']} (your own level) it is "
+            f"{result['chance_your_level']:.0%}")
+    if result["your_level"] != 5:
+        tail += f"; with a middle-of-the-road level 5 it is {result['chance_typical']:.0%}"
     return (f"A {mood} chance: about {chance:.0%} of level {result['best_level']} {target} "
-            f"would say yes to you and you would say yes back. "
-            f"With a level {result['your_level']} (your own level) it is "
-            f"{result['chance_your_level']:.0%}; with a middle-of-the-road level 5 it is "
-            f"{result['chance_typical']:.0%}.")
+            f"would say yes to you and you would say yes back. {tail}.")
 
 
 def describe(result):
-    gender = result["gender"]
-    target = SINGULAR[1 - gender]
+    target = SINGULAR[result.get("partner_gender", 1 - result["gender"])]
     lines = [verdict(result), ""]
     lines.append(f"best level        {result['best_level']} ({target}) with {result['chance']:.1%} mutual")
     lines.append(f"your own level    {result['your_level']} with {result['chance_your_level']:.1%} mutual")
@@ -190,6 +199,10 @@ def describe(result):
                  f"(negative = you value looks more than status, positive = the reverse)")
     lines.append(f"attractiveness    {result['percentile']:.0f} of 100  "
                  f"(the share of the ten same-gender packages the market model puts below you)")
+    if result.get("same_gender"):
+        lines.append("")
+        lines.append("  same-gender: the study only recorded opposite-gender dates, so this")
+        lines.append("  is an extrapolation, not a measured number.")
     lines.append("")
     lines.append("  level  mutual   band      what it means")
     for band in result["bands"]:
