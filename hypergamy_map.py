@@ -197,8 +197,10 @@ def describe(result):
     lines.append(f"middle level     5 with {result['chance_typical']:.1%} mutual")
     lines.append(f"hypergamy         {result['hypergamy']:+.1f} of 10  "
                  f"(negative = you value looks more than status, positive = the reverse)")
-    lines.append(f"attractiveness    {result['percentile']:.0f} of 100  "
-                 f"(the share of the ten same-gender packages the market model puts below you)")
+    lines.append(f"attractiveness    {result['their_yes']:.0%} would say yes  "
+                 f"(the share of dates in the study pool the market model expects to like you)")
+    lines.append(f"rank vs levels    {result['percentile']:.0f} of 100  "
+                 f"(share of the ten packages the model puts below you)")
     if result.get("same_gender"):
         lines.append("")
         lines.append("  same-gender: the study only recorded opposite-gender dates, so this")
@@ -264,9 +266,11 @@ def arrows_svg(result):
                      f'stroke="{colour}" stroke-width="3"/>')
         parts.append(f'<text x="{right - 84}" y="{start - 8}" font-size="11" '
                      f'font-weight="bold" fill="{colour}">your arrow</text>')
-    parts.append(f'<text x="16" y="404" font-size="10" fill="#8a8a8a">'
-                 f'blue: each man to the woman he is most likely to match with  ·  '
-                 f'pink: each woman to the man  ·  black: you ({result["chance"]:.0%})</text>')
+    parts.append(f'<text x="16" y="382" font-size="10" fill="#8a8a8a">'
+                 f'M1-M10 and W1-W10 are ten made-up packages, not ten real people.</text>')
+    parts.append(f'<text x="16" y="402" font-size="10" fill="#8a8a8a">'
+                 f'blue: male level to the female level it matches with most often  ·  '
+                 f'pink: the reverse  ·  black: you ({result["chance"]:.0%} mutual)</text>')
     parts.append('</svg>')
     return "".join(parts)
 
@@ -384,7 +388,7 @@ def map_svg(result):
     parts.append(f'<text x="40" y="612" font-size="16" font-weight="bold" fill="#111">'
                  f'your hypergamy {result["hypergamy"]:+.1f} / 10</text>')
     parts.append(f'<text x="40" y="634" font-size="12" fill="#6b6b6b">'
-                 f'attractiveness {result["percentile"]:.0f}/100 vs same-gender competitors  ·  '
+                 f'attractiveness {result["their_yes"]:.0%} of dates would say yes  ·  '
                  f'chance {result["chance"]:.1%} with level {result["best_level"]}</text>')
     bands = "  ".join(f"{b['level']}:{b['band'][0]}" for b in result["bands"])
     parts.append(f'<text x="40" y="656" font-size="11" fill="#8a8a8a">'
