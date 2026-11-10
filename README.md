@@ -139,6 +139,15 @@ flowchart LR
 
 ![hypergamy scale](hypergamy_scale.png)
 
+### What the 18–25 check actually found
+
+The hypothesis was that money matters less when you are young. In this data it does
+**not** hold, and the result is reported rather than buried: on the same 18–25 rows,
+the full-sample model's income slope from $12k to $140k is **−9.7 pp**, while the model
+trained only on 18–25 rows is **+46.0 pp**. Income is blank on half the rows and filled
+with training medians, and it is collinear with age, so treat this as a warning about
+the data, not a finding about young people. It stays in the output.
+
 ## Datasets
 
 | dataset | rows | what it gives | what it cannot give |
@@ -195,6 +204,10 @@ python adult.py                 # the effect table, prevalence and sources
 
 Without the CSVs in the checkout, `profile.py` still runs from the saved weights and
 says which parts it had to skip.
+
+The repository has two local branches: the code branch (datasets ignored) and
+`with-data`, which force-adds `data/*.csv`. The data files are 1.5 MB and 633 KB, so
+they are kept off the code history.
 
 ## Is it real?
 

@@ -3,4 +3,6 @@ __pycache__/
 training_frames.npz
 data/raw_speed_dating_195.csv
 data/_*.csv
+data/speed_dating_full.csv
+data/speed_dating_young.csv
 *.zip
