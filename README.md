@@ -45,9 +45,23 @@ python profile.py --mode regular --gender 1 --age 24 --income 30000 \
     --self 7,7,7,7,5 --want 8,6,7,8,9,7 --importance 30,10,15,15,20,10 --range
 ```
 
-Then read [docs/usage.md](docs/usage.md) for the twelve step walkthrough,
-[docs/gui.md](docs/gui.md) for which weights the page loads, and
-[docs/models.md](docs/models.md) for the training table, the datasets and the disk space.
+The page walks itself: pick a mode, fill the form, press Compute, then read the grid
+and the bands. `python profile.py --help`, `python gui.py --help` and
+`python hypergamy_map.py --help` list every flag.
+
+## What is inside
+
+| file | what it does |
+|---|---|
+| `gui.py` | the local page, one compute per profile, nothing leaves the machine |
+| `hypergamy_map.py` | the ten by ten map, the reach bands and both svg charts |
+| `profile.py` | the same numbers on the command line, plus `--range` and `--chart` |
+| `adult.py` | every adjustment with its basis and its source, printed by running it |
+| `route.py` | which weight files run for a given age and mode |
+| `train.py` | the training loop, the CV and the calibration |
+
+The trained weights are committed, so a clone runs immediately; `train.py` reproduces
+them. Seven files cover the taste, market and 18 to 25 models, about 60 KB in total.
 
 ## Limits
 
