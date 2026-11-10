@@ -6,7 +6,7 @@ about what a neuron does; the experiment is to drive that neuron and watch the
 animal. This script runs the same protocol on the speed-dating network, which
 fits on one screen and therefore can actually be tested exhaustively.
 
-Protocol, once per hidden neuron j, over all 3,581 dates:
+Protocol, once per hidden neuron j, over all 8,378 dates:
   * stimulate -- force a_j = +1 (saturated firing), recompute every prediction
   * silence   -- force a_j = -1 (fully suppressed), recompute
   * trigger   -- quartile contrast: which input best separates the dates on which
