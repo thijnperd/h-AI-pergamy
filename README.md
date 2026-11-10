@@ -74,14 +74,13 @@ flowchart TD
 | market, men | 8 | 8 → 16 → 8 → 1 | 66.1% ± 2.5 | 61.5% |
 | market, women | 8 | 8 → 16 → 8 → 1 | 63.9% ± 2.0 | 55.8% |
 
-Six weight files plus the base model and the 18–25 model are committed. The market side
-is weaker on purpose: age, income and self-ratings say less about someone else's yes than
-about your own.
+Six weight files plus the base model and the 18–25 model are committed. Height, body
+type, age gap and the compatibility inputs are **not trained** — no public dataset pairs
+them with a second date — so they run on a documented prior, capped at 8 points, and
+every row prints its basis: `measured`, `population` or `research`.
 
-Height, body type, age gap and the compatibility inputs are **not trained** — no public
-dataset pairs them with a second date. They run on a documented prior, capped at 8
-points, and every row prints its basis: `measured`, `population` or `research`. Sources
-and the whole table: `python adult.py`.
+The networks, the routing, the map generation and every source:
+**[HOWITWORKS.md](HOWITWORKS.md)**. The effect table: `python adult.py`.
 
 ## Releases
 
