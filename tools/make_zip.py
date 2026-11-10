@@ -2,7 +2,7 @@
 
 The repository is also the tutorial: training scripts, tests and the datasets live
 next to the app. This script picks the runtime subset (the GUI, the map, the command
-line, the seven weight files and the two charts) so a release can ship one small zip.
+line, the seven weight files and the charts) so a release can ship one small zip.
 
     python tools/make_zip.py            # writes dist/hypergamy-runtime.zip
     python tools/make_zip.py --list     # print the manifest and stop
@@ -38,6 +38,7 @@ MANIFEST = [
     # the charts the README embeds
     "hypergamy_map.svg",
     "hypergamy_average.svg",
+    "accuracy.svg",
 ]
 
 
