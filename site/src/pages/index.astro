@@ -1,0 +1,495 @@
+---
+import Base from '../layouts/Base.astro';
+import Header from '../components/Header.astro';
+import Footer from '../components/Footer.astro';
+import {
+  Heart,
+  Target,
+  Trophy,
+  Map,
+  Brain,
+  Ruler,
+  Users,
+  Database,
+  ShieldCheck,
+  Terminal,
+  ArrowRight,
+  ArrowUpRight,
+  Sparkles,
+  Lock,
+  Copy,
+} from '@lucide/astro';
+
+const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+
+const models = [
+  { name: 'taste, men', inputs: 16, cv: '81.1% ± 2.1', base: '50.1%', lift: '+31.0' },
+  { name: 'taste, women', inputs: 16, cv: '80.3% ± 1.8', base: '65.8%', lift: '+14.5' },
+  { name: 'market, men', inputs: 8, cv: '66.1% ± 2.5', base: '61.5%', lift: '+4.6' },
+  { name: 'market, women', inputs: 8, cv: '63.9% ± 2.0', base: '55.8%', lift: '+8.1' },
+  { name: 'dyad, men', inputs: 20, cv: '80.9% ± 1.1', base: '50.1%', lift: '+30.8' },
+  { name: 'map / base', inputs: 10, cv: '77.4% ± 1.2', base: '57.0%', lift: '+20.4' },
+];
+
+const packages = [
+  { n: 1, looks: '3.0 / 10', age: 24, income: '$21.0k' },
+  { n: 2, looks: '3.8 / 10', age: 25, income: '$25.5k' },
+  { n: 3, looks: '4.6 / 10', age: 26, income: '$30.0k' },
+  { n: 4, looks: '5.3 / 10', age: 27, income: '$34.5k' },
+  { n: 5, looks: '6.1 / 10', age: 28, income: '$39.0k' },
+  { n: 6, looks: '6.9 / 10', age: 30, income: '$43.5k' },
+  { n: 7, looks: '7.7 / 10', age: 31, income: '$48.0k' },
+  { n: 8, looks: '8.4 / 10', age: 32, income: '$52.5k' },
+  { n: 9, looks: '9.2 / 10', age: 33, income: '$57.0k' },
+  { n: 10, looks: '10.0 / 10', age: 34, income: '$61.5k' },
+];
+
+const repo = 'https://github.com/thijnperd/h-AI-pergamy';
+---
+
+<Base>
+  <Header />
+
+  <main id="main">
+    <!-- hero -->
+    <section class="hero wrap" aria-labelledby="hero-title">
+      <div class="hero-copy">
+        <p class="eyebrow"><span class="dot" aria-hidden="true"></span> v1.4.1 · local-first · no account</p>
+        <h1 id="hero-title">
+          Who says yes.
+          <span class="accent">And who you'd actually end up with.</span>
+        </h1>
+        <p class="lede">
+          A small neural network trained on <strong>8,378 real speed dates</strong>. It estimates
+          your chance of a mutual yes, maps the packages you can reach, and puts the measured
+          couple market next to it. Every number is trained, measured, or explicitly labelled a
+          research prior.
+        </p>
+        <div class="cta-row">
+          <a class="btn btn-primary" href="#quickstart">
+            <Terminal size={17} stroke-width={2} aria-hidden="true" />
+            Run the calculator
+          </a>
+          <a class="btn btn-ghost" href="#evidence">
+            See the evidence
+            <ArrowRight size={16} stroke-width={2} aria-hidden="true" />
+          </a>
+        </div>
+        <dl class="stat-row">
+          <div>
+            <dt>dates trained on</dt>
+            <dd>8,378</dd>
+          </div>
+          <div>
+            <dt>map 5-fold CV</dt>
+            <dd>77.4%</dd>
+          </div>
+          <div>
+            <dt>match base rate</dt>
+            <dd>16.5%</dd>
+          </div>
+        </dl>
+        <p class="stat-note">
+          Cross-validated on dates the model never saw. An always-guess baseline is printed next
+          to every accuracy — no number stands alone.
+        </p>
+      </div>
+
+      <div class="hero-visual">
+        <figure class="frame">
+          <img
+            src={`${base}/hypergamy_map.svg`}
+            width="900"
+            height="620"
+            alt="A 10 by 10 heatmap of mutual-match probabilities. Rows are men, columns are women, with a bright diagonal where looks, age and income climb together."
+            loading="eager"
+            decoding="async"
+          />
+          <figcaption class="frame-cap">
+            <span><b>The hypergamy map</b> — 100 real forward passes, not a drawing.</span>
+            <span>P(he says yes) × P(she says yes)</span>
+          </figcaption>
+        </figure>
+      </div>
+    </section>
+
+    <!-- what you get -->
+    <section class="section wrap" id="how" aria-labelledby="how-title">
+      <div class="section-head">
+        <p class="kicker">What it estimates</p>
+        <h2 id="how-title">One profile in. Four honest outputs.</h2>
+        <p>
+          The calculator answers the questions the data can actually support, and keeps the weak
+          answers visibly weak instead of turning them into a single confident score.
+        </p>
+      </div>
+
+      <div class="grid grid-4">
+        <article class="card">
+          <span class="icon-wrap"><Heart size={20} stroke-width={1.9} aria-hidden="true" /></span>
+          <h3>Chance of a mutual yes</h3>
+          <p>
+            Your yes and their yes are predicted separately, then multiplied. The market side is
+            the weaker model, and the UI prints both directions instead of hiding it.
+          </p>
+        </article>
+        <article class="card">
+          <span class="icon-wrap"><Target size={20} stroke-width={1.9} aria-hidden="true" /></span>
+          <h3>The package you reach best</h3>
+          <p>
+            Your own arrow on the map plus a reaching score from −10 to +10: the gap between what
+            you offer and what you look for.
+          </p>
+        </article>
+        <article class="card">
+          <span class="icon-wrap"><Trophy size={20} stroke-width={1.9} aria-hidden="true" /></span>
+          <h3>Competitor rank</h3>
+          <p>
+            Where your age, income, goal and self-ratings sit in the study pool, compared against
+            the date data rather than an opinion about your worth.
+          </p>
+        </article>
+        <article class="card">
+          <span class="icon-wrap"><Map size={20} stroke-width={1.9} aria-hidden="true" /></span>
+          <h3>Reach bands</h3>
+          <p>
+            Likely at 60% or more of your best cell, stretch at 25–60%, hard below 25%. A model
+            output, not a promise about any real person.
+          </p>
+        </article>
+      </div>
+
+      <div class="steps">
+        <div class="step">
+          <span class="step-n">01</span>
+          <h3>Answer what you know</h3>
+          <p>About twenty inputs, with optional fields you can leave blank. Nothing is required beyond age and income.</p>
+        </div>
+        <div class="step">
+          <span class="step-n">02</span>
+          <h3>The router picks the weights</h3>
+          <p>Age, mode and gender decide which committed model runs — including the 18–25 average.</p>
+        </div>
+        <div class="step">
+          <span class="step-n">03</span>
+          <h3>Read the basis, not just the number</h3>
+          <p>The map, partner panel and calibration block each carry a trained, measured or research label.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- the map -->
+    <section class="section wrap" id="map" aria-labelledby="map-title">
+      <div class="split">
+        <div class="prose">
+          <p class="kicker">The picture</p>
+          <h2 id="map-title" style="font-size: clamp(1.85rem, 3.4vw, 2.6rem); font-weight: 600;">The map is the product.</h2>
+          <p style="margin-top: 14px;">
+            Rows are men, columns are women, and every one of the 100 cells is a real forward pass:
+            <strong>P(he says yes) × P(she says yes)</strong>. The diagonal structure comes from the
+            ten rungs — looks, age and income climb together — not from a decorative gradient.
+          </p>
+          <ul class="list-check">
+            <li>The arrows are average behaviour: each man points at his best column, each woman at her best row.</li>
+            <li>Your arrow is drawn from your own profile, next to the cell you reach best.</li>
+            <li>The bands are relative to your own best cell, so “likely” never means “guaranteed”.</li>
+          </ul>
+
+          <details class="packages">
+            <summary>The ten package definitions</summary>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr><th>package</th><th>looks</th><th>age</th><th>income</th></tr>
+                </thead>
+                <tbody>
+                  {packages.map((p) => (
+                    <tr>
+                      <td class="num">{p.n}</td>
+                      <td class="num">{p.looks}</td>
+                      <td class="num">{p.age}</td>
+                      <td class="num">{p.income}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <p class="table-note">
+              Package 10 is a 34-year-old on about $61.5k, rated 10/10 on looks — the top rung the
+              model builds, not “the perfect woman”, and not a score out of ten.
+            </p>
+          </details>
+        </div>
+
+        <div class="band-row" aria-label="Reach bands">
+          <div class="band likely">
+            <b>likely</b>
+            <span>60% or more of your best cell</span>
+          </div>
+          <div class="band stretch">
+            <b>stretch</b>
+            <span>25–60% of your best cell</span>
+          </div>
+          <div class="band hard">
+            <b>hard</b>
+            <span>below 25% of your best cell</span>
+          </div>
+          <div class="card" style="margin-top: 8px;">
+            <h3 style="display:flex;align-items:center;gap:7px;">
+              <Sparkles size={16} stroke-width={1.9} aria-hidden="true" style="color: var(--pink);" />
+              Why not one score?
+            </h3>
+            <p>
+              A single percentage hides which model produced it. Here the trained decision, the
+              measured couple market and the research priors stay separate — because they answer
+              different questions and have very different error bars.
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- evidence -->
+    <section class="section wrap" id="evidence" aria-labelledby="evidence-title">
+      <div class="section-head">
+        <p class="kicker">The paper trail</p>
+        <h2 id="evidence-title">Every number has a provenance.</h2>
+        <p>
+          There are only three kinds of numbers in this project. If a claim does not fit one of
+          them, it does not ship.
+        </p>
+      </div>
+
+      <div class="grid grid-3">
+        <article class="card">
+          <p><span class="chip trained"><Brain size={12} aria-hidden="true" /> trained</span></p>
+          <h3 style="margin-top: 12px;">Fitted on real decisions</h3>
+          <p>
+            81.1% ± 2.1 five-fold CV for the men's taste model, against a 50.1% always-guess
+            baseline. Committed weights run without retraining and reproduce the published CVs.
+          </p>
+        </article>
+        <article class="card">
+          <p><span class="chip measured"><Ruler size={12} aria-hidden="true" /> measured</span></p>
+          <h3 style="margin-top: 12px;">Counted, not modelled</h3>
+          <p>
+            250,172 ACS couples and 6,262 NHANES heights. Descriptive context only — the couple
+            data is never fed to the date-acceptance network.
+          </p>
+        </article>
+        <article class="card">
+          <p><span class="chip research"><ShieldCheck size={12} aria-hidden="true" /> research</span></p>
+          <h3 style="margin-top: 12px;">Published, capped, cited</h3>
+          <p>
+            Adult-layer effects come from named papers in <code>adult.py</code> and are capped at
+            ±8 points, so they cannot outvote the networks. Never described as trained.
+          </p>
+        </article>
+      </div>
+
+      <div class="table-wrap" style="margin-top: 22px;">
+        <table>
+          <thead>
+            <tr>
+              <th>model</th>
+              <th>inputs</th>
+              <th>5-fold CV</th>
+              <th>always-guess</th>
+              <th>lift</th>
+            </tr>
+          </thead>
+          <tbody>
+            {models.map((m) => (
+              <tr>
+                <td class="strong">{m.name}</td>
+                <td class="num">{m.inputs}</td>
+                <td class="num">{m.cv}</td>
+                <td class="num">{m.base}</td>
+                <td class="num">{m.lift}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <p class="table-note">
+        Five-fold cross-validation on dates the model never saw. Holdout accuracy, feature sets and
+        the full per-model table live in the README. The market model is weaker because a
+        stranger's yes is mostly noise — +5 to +8 points, not +30.
+      </p>
+    </section>
+
+    <!-- partner -->
+    <section class="section wrap" id="partner" aria-labelledby="partner-title">
+      <div class="section-head">
+        <p class="kicker">The measured part</p>
+        <h2 id="partner-title">Who you'd most plausibly end up with.</h2>
+        <p>
+          Not a forecast — the realised-couple distribution for people with your age and income,
+          from the 2023 American Community Survey. These are couples who actually formed.
+        </p>
+      </div>
+
+      <div class="partner-panel">
+        <div class="partner-numbers">
+          <div class="big">22.0 <small>median partner age, for an 18-year-old on $4,500</small></div>
+          <div class="mini-grid">
+            <div><b>$14,000</b><span>median partner income</span></div>
+            <div><b>+3.3 yrs</b><span>median age gap</span></div>
+            <div><b>7.4 / 10</b><span>package-ladder position</span></div>
+          </div>
+        </div>
+        <div class="partner-copy">
+          <h3>Measured, then left alone</h3>
+          <p>
+            The panel shows the median partner age, income, age gap, same-ethnicity and
+            same-education shares for your ACS cell, plus a deterministic 25th/50th/75th percentile
+            grid. Same-education sits at 48% in that cell; overall it is 55.4%.
+          </p>
+          <p>
+            The candidates carry no dyad score. The ACS records no partner self-ratings or stated
+            importance, and imputing them produced 52% mutual chances against a 16.5% base rate —
+            an artefact, so the scoring was removed.
+          </p>
+          <p>
+            No data shipped here follows a person to a lifetime partner, so “lifetime” is not
+            claimed. HCMST is the right panel for that question; it is cited, not trained.
+          </p>
+          <div class="quote">
+            The typical partner's self-ratings sit at 7.4/10 on the package ladder — measured from
+            real participants, not modelled.
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- quickstart -->
+    <section class="section wrap" id="quickstart" aria-labelledby="quickstart-title">
+      <div class="section-head">
+        <p class="kicker">Run it</p>
+        <h2 id="quickstart-title">On your machine, in one terminal.</h2>
+        <p>
+          The calculator is a stdlib Python server on <code>127.0.0.1</code>. No account, no API
+          key, no upload. The first data build downloads the public speed-dating files and joins
+          them locally.
+        </p>
+      </div>
+
+      <div class="quick-grid">
+        <div class="terminal">
+          <div class="terminal-bar">
+            <span class="term-dots" aria-hidden="true"><i></i><i></i><i></i></span>
+            <span class="term-title">~/h-AI-pergamy</span>
+            <button class="copy" data-copy="quickstart-code" data-label="Copy" aria-label="Copy quickstart commands">
+              <Copy size={13} stroke-width={2} aria-hidden="true" />
+              <span class="copy-label">Copy</span>
+            </button>
+          </div>
+          <pre id="quickstart-code"><code><span class="comment"># clone and install</span>
+<span class="cmd">git clone</span> https://github.com/thijnperd/h-AI-pergamy.git
+<span class="cmd">cd</span> h-AI-pergamy
+<span class="cmd">python -m pip install</span> -r requirements.txt
+
+<span class="comment"># build the joined dataset, then open the calculator</span>
+<span class="cmd">python data/build.py</span>
+<span class="cmd">python gui.py</span>
+
+<span class="comment"># optional: regenerate the map as svg + png</span>
+<span class="cmd">python hypergamy_map.py</span></code></pre>
+        </div>
+
+        <div class="quick-side">
+          <div class="card">
+            <h3><Lock size={15} stroke-width={1.9} aria-hidden="true" /> Local by construction</h3>
+            <p>
+              The server binds <code>127.0.0.1</code> and there is no analytics script. Your
+              profile never leaves the machine.
+            </p>
+          </div>
+          <div class="card">
+            <h3><Terminal size={15} stroke-width={1.9} aria-hidden="true" /> Also from the CLI</h3>
+            <ul>
+              <li><code>python profile.py --demo</code></li>
+              <li><code>python partner.py --demo</code></li>
+              <li><code>python adult.py</code></li>
+              <li><code>python -m unittest discover -s tests -v</code></li>
+            </ul>
+          </div>
+          <div class="card">
+            <h3><Database size={15} stroke-width={1.9} aria-hidden="true" /> Requirements</h3>
+            <p>Python with pip and NumPy. No web framework, no database, no build step.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- data -->
+    <section class="section wrap" id="data" aria-labelledby="data-title">
+      <div class="section-head">
+        <p class="kicker">Data</p>
+        <h2 id="data-title">Named sources, or nothing.</h2>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>source</th><th>size</th><th>used for</th></tr>
+          </thead>
+          <tbody>
+            <tr><td class="strong">Speed Dating Experiment, Columbia 2002–04</td><td class="num">8,378 dates</td><td>Trained targets: <code>dec</code>, <code>dec_o</code>, <code>match</code></td></tr>
+            <tr><td class="strong">ACS 2023 1-year PUMS (CA, TX, FL, NY, IL)</td><td class="num">250,172 couples</td><td>Measured partner age, income, gap, same ethnicity/education</td></tr>
+            <tr><td class="strong">NHANES Aug 2021–Aug 2023</td><td class="num">6,262 adults</td><td>Measured height percentiles</td></tr>
+            <tr><td class="strong">OKCupid profiles (JSE)</td><td class="num">59,946</td><td>Descriptive height, body and ethnicity mix — never trained</td></tr>
+            <tr><td class="strong">HCMST</td><td class="num">cited</td><td>The right panel for lifetime stability; not shipped, not trained</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="table-note">
+        Raw downloads are gitignored. The small priors JSON files are committed so the calculator
+        runs after a clone; the builders reproduce them from the public sources.
+      </p>
+    </section>
+
+    <!-- faq -->
+    <section class="section wrap" id="faq" aria-labelledby="faq-title">
+      <div class="section-head">
+        <p class="kicker">Limits</p>
+        <h2 id="faq-title">What it refuses to claim.</h2>
+      </div>
+
+      <div class="faq">
+        <details>
+          <summary>Is this a dating app or a coach?</summary>
+          <div class="answer"><p>No. It is a statistical toy with a published paper trail: a local calculator, not advice about a specific person and not a matchmaking service.</p></div>
+        </details>
+        <details>
+          <summary>Can it predict my lifetime partner?</summary>
+          <div class="answer"><p>No. The speed-dating study ends at “second date?”, and no dataset shipped here follows a person to a partner. The partner panel reports ACS realised couples for your age and income; HCMST is the correct panel for longitudinal stability, and it is cited rather than simulated.</p></div>
+        </details>
+        <details>
+          <summary>Why is the “will they say yes” model weaker?</summary>
+          <div class="answer"><p>Because a stranger's decision is mostly noise. The market models clear their baselines by +4.6 to +8.1 points, while the taste models — whether <em>you</em> say yes — clear theirs by +14.5 to +31.0. The UI shows both rather than pretending they are equally reliable.</p></div>
+        </details>
+        <details>
+          <summary>Does it work for same-gender couples?</summary>
+          <div class="answer"><p>The trained date models run, but the measured couple context returns “not available”: the ACS priors shipped here are opposite-sex couples only. The app says that instead of silently substituting a different population.</p></div>
+        </details>
+        <details>
+          <summary>What happens to the adult-layer answers?</summary>
+          <div class="answer"><p>They are labelled research priors, cited to published studies and capped at ±8 points. There is no public outcome data for kinks or body measurements, so those effects never pretend to be trained.</p></div>
+        </details>
+        <details>
+          <summary>Does anything leave my computer?</summary>
+          <div class="answer"><p>No. The GUI is served by Python's standard library on <code>127.0.0.1</code>, with no telemetry and no external calls at compute time. The only network access is the one-time public dataset download in <code>data/build.py</code>.</p></div>
+        </details>
+      </div>
+
+      <p style="margin-top: 28px;">
+        <a class="btn btn-primary" href={`${repo}#readme`} target="_blank" rel="noreferrer">
+          Read the source
+          <ArrowUpRight size={16} stroke-width={2} aria-hidden="true" />
+        </a>
+      </p>
+    </section>
+  </main>
+
+  <Footer />
+</Base>

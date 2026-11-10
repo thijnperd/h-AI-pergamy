@@ -1,0 +1,55 @@
+---
+import { ArrowUpRight } from '@lucide/astro';
+
+const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+const repo = 'https://github.com/thijnperd/h-AI-pergamy';
+---
+<footer class="site-foot">
+  <div class="wrap foot-grid">
+    <div>
+      <a class="brand brand-light" href={`${base}/`}>
+        <span class="brand-word">HYPERGAMY</span>
+      </a>
+      <p class="foot-blurb">
+        A local-first calculator trained on real speed dates, with every number labelled
+        trained, measured, or research. No accounts, no uploads, no promises.
+      </p>
+    </div>
+
+    <div>
+      <h2 class="foot-h">Product</h2>
+      <ul>
+        <li><a href="#how">What it estimates</a></li>
+        <li><a href="#map">The hypergamy map</a></li>
+        <li><a href="#partner">Measured partner</a></li>
+        <li><a href="#quickstart">Run it locally</a></li>
+      </ul>
+    </div>
+
+    <div>
+      <h2 class="foot-h">Repository</h2>
+      <ul>
+        <li><a href={`${repo}#readme`} target="_blank" rel="noreferrer">README <ArrowUpRight size={12} aria-hidden="true" /></a></li>
+        <li><a href={`${repo}/blob/release/v1.4.0/HOWITWORKS.md`} target="_blank" rel="noreferrer">How it works <ArrowUpRight size={12} aria-hidden="true" /></a></li>
+        <li><a href={`${repo}/releases/tag/v1.4.1`} target="_blank" rel="noreferrer">v1.4.1 release <ArrowUpRight size={12} aria-hidden="true" /></a></li>
+        <li><a href={`${repo}/issues`} target="_blank" rel="noreferrer">Issues <ArrowUpRight size={12} aria-hidden="true" /></a></li>
+      </ul>
+    </div>
+
+    <div>
+      <h2 class="foot-h">Credits</h2>
+      <ul>
+        <li><a href="https://lucide.dev" target="_blank" rel="noreferrer">Icons: Lucide (ISC) <ArrowUpRight size={12} aria-hidden="true" /></a></li>
+        <li><a href="https://docs.astro.build" target="_blank" rel="noreferrer">Built with Astro <ArrowUpRight size={12} aria-hidden="true" /></a></li>
+        <li>Data: Columbia, ACS, NHANES</li>
+        <li>Cited: HCMST (not shipped)</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="wrap foot-legal">
+    <span>v1.4.1 · local-first</span>
+    <span>Not a dating service. No accounts, no uploads.</span>
+    <span>© <span id="year">2026</span> HYPERGAMY</span>
+  </div>
+</footer>

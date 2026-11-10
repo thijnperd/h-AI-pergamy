@@ -8,3 +8,8 @@ data/_*.csv
 data/speed_dating_full.csv
 data/speed_dating_young.csv
 *.zip
+
+site/node_modules/
+site/dist/
+site/.astro/
+site/.vercel/

@@ -1,0 +1,59 @@
+---
+import '../styles/global.css';
+
+const {
+  title = 'HYPERGAMY — who says yes, and who you end up with',
+  description = 'A neural network trained on 8,378 real speed dates: your chance of a mutual yes, the packages you can reach, and the ACS-measured partner distribution. Local-first, no sign-up.',
+} = Astro.props;
+
+const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+const canonical = new URL(Astro.url.pathname, Astro.site);
+const ogImage = new URL(`${base}/og-map.png`, Astro.site);
+---
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{title}</title>
+    <meta name="description" content={description} />
+    <link rel="icon" href={`${base}/favicon.svg`} type="image/svg+xml" />
+    <link rel="canonical" href={canonical} />
+    <meta name="theme-color" content="#241b21" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="HYPERGAMY" />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={canonical} />
+    <meta property="og:image" content={ogImage} />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={title} />
+    <meta name="twitter:description" content={description} />
+    <meta name="twitter:image" content={ogImage} />
+  </head>
+  <body>
+    <a class="skip" href="#main">Skip to content</a>
+    <slot />
+    <script>
+      for (const button of document.querySelectorAll<HTMLButtonElement>('[data-copy]')) {
+        button.addEventListener('click', async () => {
+          const source = document.getElementById(button.dataset.copy ?? '');
+          if (!source) return;
+          const label = button.querySelector<HTMLElement>('.copy-label');
+          const original = label?.textContent ?? 'Copy';
+          try {
+            await navigator.clipboard.writeText((source.textContent ?? '').trim());
+            if (label) label.textContent = 'Copied';
+          } catch {
+            if (label) label.textContent = 'Select the text';
+          }
+          window.setTimeout(() => {
+            if (label) label.textContent = original;
+          }, 1800);
+        });
+      }
+      const year = document.getElementById('year');
+      if (year) year.textContent = String(new Date().getFullYear());
+    </script>
+  </body>
+</html>

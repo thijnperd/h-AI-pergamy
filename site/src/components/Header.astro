@@ -1,0 +1,42 @@
+---
+import { ArrowUpRight } from '@lucide/astro';
+
+const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+---
+<header class="site-head">
+  <div class="wrap head-inner">
+    <a class="brand" href={`${base}/`} aria-label="HYPERGAMY home">
+      <span class="brand-mark" aria-hidden="true">
+        <svg viewBox="0 0 32 32" width="30" height="30" role="presentation">
+          <rect width="32" height="32" rx="9" fill="#241b21"></rect>
+          <circle cx="10" cy="11" r="2.6" fill="#c2185b"></circle>
+          <circle cx="22" cy="13" r="2" fill="#f4e8ed"></circle>
+          <circle cx="16" cy="23" r="2.2" fill="#246b8e"></circle>
+          <path d="M12 12.5 20 13.5M11.5 13.5 15 21M21 15 17 21" stroke="#f4e8ed" stroke-width="1.1" stroke-linecap="round" opacity=".8"></path>
+        </svg>
+      </span>
+      <span class="brand-word">HYPERGAMY</span>
+    </a>
+
+    <nav class="nav" aria-label="Sections">
+      <a href="#how">How it works</a>
+      <a href="#map">The map</a>
+      <a href="#evidence">Evidence</a>
+      <a href="#partner">Partner</a>
+      <a href="#faq">FAQ</a>
+    </nav>
+
+    <a
+      class="btn btn-ghost btn-sm head-cta"
+      href="https://github.com/thijnperd/h-AI-pergamy"
+      target="_blank"
+      rel="noreferrer"
+    >
+      <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true">
+        <path d="M12 .5C5.65.5.5 5.65.5 12a11.5 11.5 0 0 0 7.86 10.92c.58.1.79-.25.79-.56v-2c-3.2.7-3.88-1.54-3.88-1.54-.53-1.33-1.28-1.69-1.28-1.69-1.05-.72.08-.7.08-.7 1.16.08 1.77 1.19 1.77 1.19 1.03 1.77 2.7 1.26 3.36.96.1-.75.4-1.26.73-1.55-2.55-.29-5.23-1.28-5.23-5.7 0-1.26.45-2.29 1.19-3.1-.12-.29-.52-1.46.11-3.05 0 0 .97-.31 3.18 1.18a11 11 0 0 1 5.8 0c2.2-1.49 3.17-1.18 3.17-1.18.63 1.59.23 2.76.12 3.05.74.81 1.18 1.84 1.18 3.1 0 4.43-2.69 5.4-5.25 5.69.41.36.78 1.06.78 2.14v3.17c0 .31.21.67.8.56A11.5 11.5 0 0 0 23.5 12C23.5 5.65 18.35.5 12 .5Z"></path>
+      </svg>
+      GitHub
+      <ArrowUpRight size={14} stroke-width={2} aria-hidden="true" />
+    </a>
+  </div>
+</header>

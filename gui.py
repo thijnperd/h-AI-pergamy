@@ -323,11 +323,19 @@ PAGE = r"""<!doctype html>
   @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after { animation-duration:.01ms !important; transition:none !important; }
   }
+
+  .ico { width:18px; height:18px; vertical-align:-3px; margin-right:7px;
+         stroke:currentColor; fill:none; stroke-width:2; stroke-linecap:round;
+         stroke-linejoin:round; }
+  .ico-lg { width:25px; height:25px; margin-right:9px; }
+  .page-foot { max-width:1080px; margin:0 auto 26px; padding:0 24px;
+               color:var(--grey); font-size:11.5px; line-height:1.5; }
+  .page-foot a { color:var(--pink); }
 </style></head><body>
 <header class="site-header">
   <div class="brand">
     <span class="brand-mark" aria-hidden="true">H</span>
-    <div><h1>HYPERGAMY</h1>
+    <div><h1><svg class="ico ico-lg" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg>HYPERGAMY</h1>
       <p>Mutual yes, reaching, and the partner market &mdash; from saved weights.
         Nothing leaves this machine.</p></div>
   </div>
@@ -489,7 +497,7 @@ PAGE = r"""<!doctype html>
 
   <section class="panel result-panel" aria-labelledby="result-title">
     <div class="section-head"><span class="step" aria-hidden="true">02</span>
-      <div><h2 id="result-title">Result</h2>
+      <div><h2 id="result-title"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3Z"/><path d="M5 3v4"/><path d="M19 17v4"/><path d="M3 5h4"/><path d="M17 19h4"/></svg>Result</h2>
         <p>Every number carries its basis: trained, measured, or research.</p></div></div>
     <div id="result" class="muted" aria-live="polite" aria-busy="false">
       <div class="empty">Set your profile, then press <b>Compute</b>. The result
@@ -497,6 +505,8 @@ PAGE = r"""<!doctype html>
     </div>
   </section>
 </main>
+<footer class="page-foot">Icons: <a href="https://lucide.dev">Lucide</a> (ISC).
+  The server binds 127.0.0.1; no telemetry, no uploads.</footer>
 <script>
 const NAMES = ["looks","sincerity","intelligence","fun","ambition"];
 const WANT = ["looks","sincerity","intelligence","fun","ambition","shared taste"];
@@ -696,7 +706,7 @@ function partner_panel(r) {
     `<p style="margin:8px 0 0">The typical partner's self-ratings sit at
      <b>${p.ladder_level.toFixed(1)} / 10</b> on the package ladder &mdash; measured from
      real participants (${p.self_basis}), not modelled.</p>`;
-  return `<h2 style="margin-top:16px">Who you most plausibly end up with</h2>
+  return `<h2 style="margin-top:16px"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg>Who you most plausibly end up with</h2>
     <div class="context">
       <p style="margin:0 0 4px">People with your age and income pair with a partner whose median
       age is <b>${one(t.age, " yrs")}</b>, income <b>${money(t.income)}</b>, age gap
@@ -731,7 +741,7 @@ function market_panel(r) {
   const heightRow = h.your_percentile == null ? '' :
     `<tr><td>your measured height percentile</td>
       <td>${h.your_percentile.toFixed(0)} (NHANES, n=${h.n.toLocaleString()})</td></tr>`;
-  return `<h2 style="margin-top:16px">Measured couple market</h2>
+  return `<h2 style="margin-top:16px"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>Measured couple market</h2>
     <div class="context">
       <p style="margin:0 0 4px"><b>${c.n_total.toLocaleString()}</b> real opposite-sex couples from
       ${c.states.join(', ')}. This cell: ${c.age_band} age, ${c.income_band} income,
@@ -758,7 +768,7 @@ function research_panel(r) {
   const item = (heading, x) => `<div class="research-item"><b>${heading}</b>
     <span>${x.summary}</span><div class="help">${x.detail} <em>${x.applied}</em></div></div>`;
   const sources = q.sources.map(s => `<li><b>${s.label}</b> &mdash; ${s.finding}</li>`).join('');
-  return `<h2 style="margin-top:16px">What the research says</h2>
+  return `<h2 style="margin-top:16px"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M10 2v7.527a2 2 0 0 1-.211.896L4.72 20.55a1 1 0 0 0 .9 1.45h12.76a1 1 0 0 0 .9-1.45l-5.069-10.127A2 2 0 0 1 14 9.527V2"/><path d="M8.5 2h7"/><path d="M7 16h10"/></svg>What the research says</h2>
     <div class="research">
       ${item(q.income_age.title, q.income_age)}
       ${item(q.height.title, q.height)}
@@ -789,7 +799,7 @@ function render(r) {
       return `<div class="mapcell${mine}" style="background:${bg}" title="M${i + 1} x W${j + 1}: ${(v * 100).toFixed(0)}%">${(v * 100).toFixed(0)}</div>`;
     }).join("") + `</div>`).join("");
     const bands = r.map.bands.map(b => `<li>package ${b.level}: ${(b.mutual * 100).toFixed(0)}% mutual &mdash; ${b.band}</li>`).join("");
-    return `<h2 style="margin-top:16px">Who you can reach</h2>
+    return `<h2 style="margin-top:16px"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M14.106 5.553a2 2 0 0 0 1.788 0l3.659-1.83A1 1 0 0 1 21 4.619v12.764a1 1 0 0 1-.553.894l-4.553 2.277a2 2 0 0 1-1.788 0l-4.212-2.106a2 2 0 0 0-1.788 0l-3.659 1.83A1 1 0 0 1 3 19.381V6.618a1 1 0 0 1 .553-.894l4.553-2.277a2 2 0 0 1 1.788 0z"/><path d="M15 5.764v15"/><path d="M9 3.236v15"/></svg>Who you can reach</h2>
       <p class="muted" style="margin:0 0 8px">rows are men, columns are women, each cell is the chance you both say yes. M1-M10 and W1-W10 are ten made-up packages (looks, age and income moving together), not ten real people and not a score out of ten.</p>
       ${grid}
       <div class="arrows">${r.map.arrows}</div>
@@ -861,16 +871,16 @@ function render(r) {
       estimate, not as a score of your worth. "Rank vs levels" is different: it compares you
       with the ten made-up packages, and it is not a rating of you either.</p>
       <p><b>who you end up with</b> — measured from 250,172 ACS couples: the median partner
-      age, income and age gap for people with your age and income, scored by the dyad models
-      on that measured grid. It is not a lifetime forecast; no shipped data follows a person
-      to a partner.</p>
+      age, income and age gap for people with your age and income. The ACS has no partner
+      self-ratings, so those candidates are measured profiles, not dyad-scored. It is not a
+      lifetime forecast; no shipped data follows a person to a partner.</p>
       <p><b>calibration</b> — ${r.calibration ? `on ${r.calibration.n.toLocaleString()}
       ${r.gender === "man" ? "male" : "female"} rows the model's own predictions are compared
       with what actually happened: ${r.calibration.taste.slice(0, 5).map(b => `${b.range}
       predicted ${b.predicted}, observed ${b.observed}`).join("; ")}. The ends are compressed,
       so read the headline as a rank, not a frequency.` : "needs data/build.py."}</p>
     </details>
-    <h2 style="margin-top:16px">Models used</h2>
+    <h2 style="margin-top:16px"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg>Models used</h2>
     <p class="muted" style="margin:0 0 6px">${r.routing}</p>
     <ul>${models}</ul>`;
 }
