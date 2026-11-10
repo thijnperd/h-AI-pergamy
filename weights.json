@@ -246,23 +246,7 @@
   "epochs": 300,
   "lr": 0.08,
   "l2": 0.001,
-  "history": [
-    {
-      "epoch": 100,
-      "train_loss": 0.4471,
-      "val_loss": 0.504
-    },
-    {
-      "epoch": 200,
-      "train_loss": 0.4441,
-      "val_loss": 0.5024
-    },
-    {
-      "epoch": 300,
-      "train_loss": 0.4411,
-      "val_loss": 0.5025
-    }
-  ],
+  "history": [],
   "scope": {
     "gender": null,
     "min_age": null,

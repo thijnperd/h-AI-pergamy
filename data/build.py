@@ -50,8 +50,12 @@ PARTNER = ["dec_o", "match", "age_o", "attr_o", "sinc_o", "intel_o", "fun_o",
 PREF = ["attr1_1", "sinc1_1", "intel1_1", "fun1_1", "amb1_1", "shar1_1"]
 SELF = ["attr3_1", "sinc3_1", "intel3_1", "fun3_1", "amb3_1"]
 IDS = ["iid", "pid", "wave"]
+# Pre-event context that the original 34-column export dropped.  These are kept so
+# the race/same-race analysis can be reproduced; the networks do not automatically
+# consume them.
+CONTEXT = ["race", "race_o", "samerace", "imprace", "imprelig", "int_corr"]
 
-COLUMNS = IDS + BASE + PARTNER + PREF + SELF
+COLUMNS = IDS + BASE + PARTNER + PREF + SELF + CONTEXT
 
 
 def download(url, path):

@@ -5,7 +5,8 @@ to see someone again. So nothing here is *trained*. Instead every input falls in
 of three buckets, and the report prints which one:
 
   MEASURED    estimated from the 8,378 real speed dates in this project
-  POPULATION  a percentile from 59,946 real OKCupid profiles -- descriptive only
+  POPULATION  a percentile from OKCupid profiles or NHANES measured heights --
+              descriptive only
   RESEARCH    an effect read off the published literature, cited below
 
 What the literature actually says, and how it is used here:
@@ -26,9 +27,16 @@ What the literature actually says, and how it is used here:
   likely to choose a man 25 cm taller; men a woman 7 cm shorter; actual matches peaked
   at a 19 cm gap. The male-taller norm is real but modest in realised couples
   (PLOS ONE 2013: assortative r = .18, "not too tall" penalty past ~25 cm).
-* **Kink.** Reviews put BDSM fantasy at 40-70% of the general population and any
-  practice around 20% (Holvoet 2017: 46.8% ever tried, 7.6% identify). Compatibility
-  therefore matters more than having or not having a kink.
+* **Kink.** Interest is common and practice is not rare: 68.8% of a nationally
+  representative Belgian sample reported at least one BDSM fantasy or practice, 46.8%
+  had actually done one, 26% called themselves interested and 7.6% identified as
+  practitioners (Holvoet 2017, n=1,027). A Norwegian population study found over one
+  in three endorsing a BDSM interest or behaviour (n=4,148), a Finnish sample 38%
+  interested (n=8,137), and Joyal & Carpentier 45.6% with at least one paraphilic
+  interest. The same Norwegian study found BDSM *behaviour* associated with higher
+  sexual satisfaction while mere unfulfilled interest was associated with lower
+  closeness -- so the effect here is compatibility, not participation, and it is
+  deliberately small.
 * **Desire discrepancy.** Common and one of the more reliable predictors of lower
   sexual and relationship satisfaction (Willoughby 2013, n=1,054 couples).
 
@@ -41,8 +49,11 @@ networks. It nudges, it does not decide.
 import json
 import os
 
+import research
+
 HERE = os.path.dirname(os.path.abspath(__file__))
 PRIORS_PATH = os.path.join(HERE, "data", "population_priors.json")
+HEIGHT_PRIORS_PATH = os.path.join(HERE, "data", "height_priors.json")
 
 MEASURED_AGE_GAP = {
     1: {"0-2": 0.5108, "3-5": 0.4684, "6-10": 0.4038, "11-99": 0.4870},
@@ -51,27 +62,65 @@ MEASURED_AGE_GAP = {
 MEASURED_SAME_RACE_PP = {1: 0.07, 0: 4.61}
 
 BODY_TYPES = ["thin", "athletic", "average", "curvy", "full figured", "a little extra"]
+BODY_HELP = {
+    "thin": "narrow frame, little visible muscle",
+    "athletic": "fit, visible muscle",
+    "average": "neither slim nor heavy",
+    "curvy": "defined waist and hips",
+    "full figured": "soft, rounder build",
+    "a little extra": "heavier build",
+}
 BODY_EFFECT = {"thin": 0.5, "athletic": 1.5, "average": 0.0,
                "curvy": 0.8, "full figured": -1.2, "a little extra": -1.2}
+PARTNER_BODY_EFFECT = {"thin": -0.3, "athletic": 1.0, "average": 0.0,
+                       "curvy": 0.9, "full figured": 0.3, "a little extra": -0.3}
 
-# Self-reported size bucket -> percentile of the Veale 2015 nomogram, then effect.
+# Erect length in cm -> percentile of the Veale 2015 nomogram (15,521 men).
+SIZE_CURVE_CM = [(10.0, 1), (11.0, 5), (11.8, 10), (12.5, 25), (13.1, 50),
+                 (13.8, 75), (14.7, 90), (15.5, 95), (17.0, 99)]
 SIZE_EFFECT = {1: -1.5, 2: -0.6, 3: 0.0, 4: 1.0, 5: 0.4}   # 5 = too large stops helping
-CUP_EFFECT = {1: -0.4, 2: 0.4, 3: 1.2, 4: 0.8, 5: 0.0}    # C is the modal favourite
+CUP_SIZES = ["A", "B", "C", "D", "DD/E", "F or larger"]
+CUP_HELP = {
+    "A": "small",
+    "B": "small to medium",
+    "C": "medium, the population favourite",
+    "D": "medium to large",
+    "DD/E": "large",
+    "F or larger": "very large",
+}
+CUP_EFFECT = {"A": -0.4, "B": 0.4, "C": 1.2, "D": 0.8, "DD/E": 0.3, "F or larger": 0.0}
+
+
+def cup_key(value):
+    """Normalise the cup labels the form and CLI accept."""
+    key = str(value or "C").strip().upper()
+    if key in ("DD", "DD/E", "E"):
+        return "DD/E"
+    if key.startswith("F"):
+        return "F or larger"
+    return key if key in CUP_EFFECT else "C"
+
 
 GENDERS = {0: "woman", 1: "man"}
 MODES = ("regular", "advanced", "adult")
 CAP_PP = 8.0
 
-# Typical partner height, from the OKCupid medians (70 in men, 65 in women).
-TYPICAL_HEIGHT = {0: 70.0, 1: 65.0}
+# Typical partner height in cm, from the OKCupid medians (178 in men, 165 in women).
+TYPICAL_HEIGHT = {0: 178.0, 1: 165.0}
 
 SOURCES = {
     "penis_size": "Veale et al. 2015, BJU Int 115:978-986 (doi:10.1111/bju.13010); "
                   "Lever et al. 2006, J Sex Med",
     "breast_size": "Swami & Tovee 2013, Arch Sex Behav 42:1199; US census breast study 2022; "
                    "Breast Size Satisfaction Survey 2020 (n=18,541)",
-    "height": "Stulp et al. 2013, Anim Behav (5,782 speed-daters); Stulp et al. 2013, PLOS ONE",
-    "bdsm": "Holvoet et al. 2017; Joyal & Carpentier 2017; scoping review 2019 (40-70% fantasy, ~20% practice)",
+    "height": "Stulp et al. 2013, Anim Behav (5,782 speed-daters); Ong 2014 field "
+              "experiment; 2022 Frontiers cross-cultural height study",
+    "race": "Hitsch et al. 2010, QME 8:393-427; Hwang 2013, Race Soc Probl 5:28-40",
+    "income_age": "Fales et al. 2016, Pers Individ Dif 88:78-87; Botzet et al. 2023, "
+                  "Hum Nat 34:539-568; Schwarz & Hassebrauck 2012, Hum Nat 23:447-466",
+    "bdsm": "Holvoet et al. 2017 (J Sex Med 14:1152, n=1,027); Joyal & Carpentier 2017 (n=1,040); "
+            "Baranowski et al. 2021 (Norway, n=4,148); Finnish prevalence 2023 (n=8,137); "
+            "scoping review 2019 (J Sex Res)",
     "desire": "Willoughby et al. 2013 (n=1,054 married couples)",
 }
 
@@ -80,9 +129,11 @@ PREVALENCE = {
     "satisfied with partner size": "85% of women (Lever 2006)",
     "wants larger breasts": "47.5% of women; 29.3% satisfied (BSSS 2020)",
     "men preferring medium breasts": "32.7%; large 24.4%; very large 19.1% (Swami 2013)",
-    "BDSM fantasy": "40-70%",
-    "BDSM practice, ever": "~20% (46.8% at least once in one Belgian sample)",
-    "identifies as kink practitioner": "7.6%",
+    "BDSM fantasy or practice, any": "68.8% (Holvoet 2017); 38% interested in Finland (2023)",
+    "BDSM practice, ever": "46.8% (Holvoet 2017); over 1 in 3 in Norway (2021)",
+    "interested in BDSM": "26% (Holvoet 2017)",
+    "identifies as kink practitioner": "7.6% (Holvoet 2017)",
+    "BDSM and satisfaction": "behaviour associated with higher sexual satisfaction; unfulfilled interest with lower closeness (Norway 2021)",
     "desire discrepancy in couples": "common; predicts lower satisfaction (Willoughby 2013)",
 }
 
@@ -95,16 +146,33 @@ def priors():
         return {}
 
 
+def measured_height_priors():
+    try:
+        with open(HEIGHT_PRIORS_PATH, encoding="utf-8") as f:
+            return json.load(f)
+    except (OSError, ValueError):
+        return {}
+
+
 def height_percentile(height_in, gender):
-    p = priors().get("height_in", {}).get("men" if gender else "women", {})
-    if not p or height_in is None:
+    """Percentile of a height, preferring measured NHANES over self-reported OKCupid."""
+    measured = measured_height_priors().get("height_in", {}).get(
+        "men" if gender else "women", {})
+    if measured:
+        points = [(float(measured[k]), float(v)) for k, v in
+                  (("p05", 5), ("p25", 25), ("median", 50), ("p75", 75), ("p95", 95))
+                  if measured.get(k) is not None]
+    else:
+        p = priors().get("height_in", {}).get("men" if gender else "women", {})
+        points = sorted((float(k), float(v)) for k, v in p.items() if k != "n")
+    if not points or height_in is None:
         return None
-    points = sorted((float(k), float(v)) for k, v in p.items() if k != "n")
-    if height_in <= points[0][1]:
+    points.sort()
+    if height_in <= points[0][0]:
         return 1.0
-    if height_in >= points[-1][1]:
+    if height_in >= points[-1][0]:
         return 99.0
-    for (p0, h0), (p1, h1) in zip(points, points[1:]):
+    for (h0, p0), (h1, p1) in zip(points, points[1:]):
         if h0 <= height_in <= h1:
             span = (height_in - h0) / max(h1 - h0, 1e-9)
             return p0 + span * (p1 - p0)
@@ -120,20 +188,50 @@ def _gap_bucket(years):
 
 
 def _height_effect(profile, gender):
-    """Stulp's shape: women choose men ~25 cm taller, men choose women ~7 cm shorter,
-    and realised matches peak at a 19 cm gap. Penalise distance from the preferred
-    gap, and penalise the "too tall" side a little harder."""
-    height = profile.get("height_in")
+    """Stulp's shape: women choose men about 19 cm taller, men choose women about 7 cm
+    shorter, and realised matches peak at a 19 cm gap. Penalise distance from the
+    preferred gap, and the "too tall" side a little harder."""
+    height = profile.get("height_cm")
     if not height:
         return 0.0, "height not given"
-    partner = float(profile.get("partner_height_in", TYPICAL_HEIGHT[gender]))
-    gap_cm = (partner - float(height)) * 2.54
-    wanted = 7.5 if gender == 0 else -2.8          # inches, from Stulp 2013
-    off = abs((partner - float(height)) - wanted)
-    effect = -0.9 * off
-    if gender == 0 and gap_cm > 25:                # the "too tall" penalty
-        effect -= 0.6 * (gap_cm - 25) / 5.0
-    return max(-3.0, min(3.0, effect)), f"height gap {gap_cm:+.0f} cm"
+    partner = float(profile.get("partner_height_cm", TYPICAL_HEIGHT[gender]))
+    gap = partner - float(height)
+    wanted = 19.0 if gender == 0 else -7.1          # cm, from Stulp 2013
+    # Ong 2014: short women are the most willing to trade income for height.
+    # This is a narrow research prior, not a trained coefficient.
+    mult = research.height_slope_multiplier(gender, height)
+    effect = -0.354 * mult * abs(gap - wanted)
+    if gender == 0 and gap > 25:                    # the "too tall" penalty
+        effect -= 0.12 * (gap - 25)
+    return (max(-3.0, min(3.0, effect)),
+            f"height gap {gap:+.0f} cm, own-height x{mult:.2f}")
+
+
+def size_percentile(cm):
+    """Where a length sits in the Veale 2015 nomogram, in percent."""
+    cm = float(cm)
+    if cm <= SIZE_CURVE_CM[0][0]:
+        return 1.0
+    if cm >= SIZE_CURVE_CM[-1][0]:
+        return 99.0
+    for (c0, p0), (c1, p1) in zip(SIZE_CURVE_CM, SIZE_CURVE_CM[1:]):
+        if c0 <= cm <= c1:
+            return p0 + (cm - c0) / max(c1 - c0, 1e-9) * (p1 - p0)
+    return 50.0
+
+
+def size_bucket(cm):
+    """Five bands, so one input cannot dominate the result."""
+    p = size_percentile(cm)
+    if p < 25:
+        return 1
+    if p < 50:
+        return 2
+    if p < 75:
+        return 3
+    if p < 95:
+        return 4
+    return 5
 
 
 def adjustments(profile, gender):
@@ -149,19 +247,21 @@ def adjustments(profile, gender):
     rows.append((f"age gap {bucket} years", 0.5 * gap_delta, "measured"))
 
     same_race = bool(profile.get("same_race", True))
+    race_delta = MEASURED_SAME_RACE_PP[gender] if same_race else 0.0
+    d_them += race_delta
     rows.append(("same race" if same_race else "different race",
-                 MEASURED_SAME_RACE_PP[gender] if same_race else 0.0, "measured"))
+                 race_delta, "measured"))
 
-    h = profile.get("height_in")
+    h = profile.get("height_cm")
     if h:
-        pct = height_percentile(h, gender)
+        pct = height_percentile(float(h) / 2.54, gender)
         if pct is not None:
-            rows.append((f"height {h:.0f} in ({pct:.0f}th percentile of real profiles)", 0.0, "population"))
+            rows.append((f"height {h:.0f} cm ({pct:.0f}th percentile of real profiles)", 0.0, "population"))
 
     if profile.get("mode") in ("advanced", "adult") and h:
         effect, note = _height_effect(profile, gender)
         d_them += effect
-        rows.append((f"{note}, preferred {7.5 if gender == 0 else -2.8:+.1f} in", effect, "research"))
+        rows.append((f"{note}, preferred {19.0 if gender == 0 else -7.1:+.1f} cm", effect, "research"))
 
     body = str(profile.get("body_type", "average")).lower()
     body_delta = BODY_EFFECT.get(body, 0.0)
@@ -174,24 +274,57 @@ def adjustments(profile, gender):
                      2.0 if profile.get("orientation_match", True) else -6.0, "research"))
 
         kink = float(profile.get("kink_match", 3.0))
-        kink_delta = -1.0 + 1.1 * kink
+        # Compatibility, not presence: the literature says interest is common and
+        # practice is linked to satisfaction, so mismatch costs less than fit gains.
+        kink_delta = -0.6 + 0.72 * kink
         d_them += kink_delta
         d_you += 0.5 * kink_delta
         rows.append((f"kink compatibility {kink:.0f}/5", kink_delta, "research"))
 
         libido = float(profile.get("libido_match", 3.0))
-        libido_delta = -1.0 + 0.8 * libido
+        libido_delta = -0.8 + 0.7 * libido
         d_you += libido_delta
         rows.append((f"libido compatibility {libido:.0f}/5", libido_delta, "research"))
 
-        size = int(round(float(profile.get("genital", 3.0))))
-        d_them += SIZE_EFFECT.get(size, 0.0)
-        rows.append((f"size bucket {size}/5 ({'below median' if size < 3 else 'median' if size == 3 else 'above median'})",
-                     SIZE_EFFECT.get(size, 0.0), "research"))
+        pg = profile.get("partner_gender", 1 - gender)
+        partner_gender = (0 if str(pg).lower().startswith("w") else 1) \
+            if isinstance(pg, str) else int(pg)
+        if gender == 1:
+            size_cm = float(profile.get("size_cm", 13.1))
+            bucket = size_bucket(size_cm)
+            size_effect = SIZE_EFFECT.get(bucket, 0.0)
+            d_them += size_effect
+            rows.append((f"your size {size_cm:.1f} cm "
+                         f"({size_percentile(size_cm):.0f}th percentile)",
+                         size_effect, "research"))
+        else:
+            own_cup = cup_key(profile.get("own_cup", "C"))
+            own_effect = CUP_EFFECT.get(own_cup, 0.0)
+            d_them += own_effect
+            rows.append((f"your chest {own_cup} "
+                         f"({CUP_HELP.get(own_cup, 'unknown')})",
+                         own_effect, "research"))
 
-        cup = int(round(float(profile.get("cup", 3.0))))
-        d_them += CUP_EFFECT.get(cup, 0.0)
-        rows.append((f"breast size bucket {cup}/5 (C = favourite)", CUP_EFFECT.get(cup, 0.0), "research"))
+        if partner_gender == 0:
+            cup = cup_key(profile.get("cup", "C"))
+            cup_effect = CUP_EFFECT.get(cup, 0.0)
+            d_you += cup_effect
+            rows.append((f"their chest {cup} "
+                         f"({CUP_HELP.get(cup, 'unknown')})",
+                         cup_effect, "research"))
+        else:
+            partner_size = float(profile.get("partner_size_cm", 13.1))
+            bucket = size_bucket(partner_size)
+            pref_effect = SIZE_EFFECT.get(bucket, 0.0)
+            d_you += pref_effect
+            rows.append((f"preferred size {partner_size:.1f} cm "
+                         f"({size_percentile(partner_size):.0f}th percentile)",
+                         pref_effect, "research"))
+
+        pbody = str(profile.get("partner_body", "average")).lower()
+        pbody_effect = PARTNER_BODY_EFFECT.get(pbody, 0.0)
+        d_you += pbody_effect
+        rows.append((f"partner build: {pbody}", pbody_effect, "research"))
 
         exp = float(profile.get("experience", 3.0))
         exp_delta = max(-1.0, min(1.5, (exp - 3.0) * 0.5))
@@ -206,9 +339,10 @@ def main():
     print(f"  {'input':<58} {'effect':>7}  basis")
     print("  " + "-" * 78)
     for label, delta, basis in adjustments({"mode": "adult", "age_gap": 4.0, "same_race": True,
-                                            "height_in": 70, "body_type": "athletic",
+                                            "height_cm": 178, "body_type": "athletic",
                                             "kink_match": 4, "libido_match": 4,
-                                            "genital": 4, "cup": 3, "experience": 4}, 1)[2]:
+                                            "size_cm": 14.5, "cup": "C",
+                                            "partner_body": "curvy", "experience": 4}, 1)[2]:
         print(f"  {label:<58} {delta:>+6.1f}  {basis}")
 
     print("\nWhat the population looks like:")

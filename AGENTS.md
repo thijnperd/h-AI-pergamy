@@ -1,31 +1,44 @@
 # AGENTS.md
 
-Project: **HYPERGAMY** — a NumPy neural network trained on real speed dates, drawn as
-the hypergamy meme, plus a profile tool (regular / advanced / adult) that estimates the
-chance of a mutual yes, a hypergamy score, and a competitor rank.
+Project: **HYPERGAMY** — NumPy neural networks trained on real speed dates, plus a local
+web GUI and a profile tool that estimate the chance of a mutual yes, a hypergamy score,
+the competitor rank, and the range of partners you can plausibly reach.
 
-Three rules, in order:
+Rules, in order:
 
 1. **Every number is either trained, measured, or labelled as a prior.** No invented
    statistics, no decorative arrows, no "dataset" that was generated.
-2. **The drawing stays 10×10.** It is the joke and the shape of the picture. Accuracy
-   comes from depth and features, not from redrawing the meme.
-3. **The adult layer never pretends.** There is no public outcome data for kinks or
-   body measurements; those effects are `research` priors, capped, and printed as such.
+2. **Only one chart family.** The hypergamy map (`hypergamy_map.py`) is the picture:
+   a 10x10 heatmap of mutual probabilities with arrows and your own arrow. There is no
+   fly experiment, no training GIF, and no second hypergamy chart.
+3. **The adult layer never pretends.** There is no public outcome data for kinks or body
+   measurements; those effects are `research` priors, capped, and printed as such.
 
 ## Quick start
 
 ```bash
-python -m pip install numpy matplotlib
-python data/build.py                     # downloads + joins; writes data/speed_dating_full.csv
-python train.py --snapshots              # drawn model + training_frames.npz
-python train.py --features taste --layers 24,12 --epochs 400 --lr 0.05 --out weights_deep.json
-python train.py --features market --target dec_o --layers 16,8 --out weights_market.json
-python visualize.py && python visualize_gender.py
-python visualize_chance.py && python visualize_scale.py
-python animate.py && python neurons.py && python predict.py --demo
+python -m pip install -r requirements.txt
+python data/build.py                 # downloads + joins; writes data/speed_dating_full.csv
+python data/build_couples.py --states ca,tx,fl,ny,il  # ACS couple priors
+python data/build_height.py         # NHANES height priors
+python train.py --snapshots          # drawn model + training frames
+python train.py --features taste --layers 24,12 --epochs 400 --lr 0.05 --gender 1 \
+                --out weights_deep_men.json
+python train.py --features taste --layers 24,12 --epochs 400 --lr 0.05 --gender 0 \
+                --out weights_deep_women.json
+python train.py --features market --target dec_o --layers 16,8 --gender 1 \
+                --out weights_market_men.json
+python train.py --features market --target dec_o --layers 16,8 --gender 0 \
+                --out weights_market_women.json
+python train.py --features dyad --layers 16,8 --gender 1 --out weights_likes_men.json
+python train.py --features dyad --layers 16,8 --gender 0 --out weights_likes_women.json
+python train.py --features taste --layers 24,12 --min-age 18 --max-age 25 --out weights_young.json
+python generate.py --train           # person-generator weights
+python gui.py                        # the GUI, http://127.0.0.1:8000
+python hypergamy_map.py              # the map: svg + png + the reach bands
 python profile.py --demo
 python adult.py
+python -m unittest discover -s tests -v   # 15-test v1.3.0 regression suite
 ```
 
 ## Layout
@@ -33,23 +46,29 @@ python adult.py
 ```
 data/build.py          downloads the 195-variable file + the income copy, proves they are
                        row-aligned, writes speed_dating_full.csv and speed_dating_young.csv
+data/build_couples.py  ACS 2023 couple-market priors -> data/couple_priors.json
+data/build_height.py   NHANES 2021-23 measured heights -> data/height_priors.json
 train.py               generic MLP (any depth), feature sets, targets, age filters, CV,
                        gradient check, temperature calibration
-profile.py             the product: modes, adjustments, competitor rank, chart
+route.py               which model runs for which age/mode/gender
+profile.py             the product: modes, adjustments, competitor rank, --range
 adult.py               measured / population / research effects + sources + prevalence
-visualize.py           drawn network -> hypergamy_network.png
-visualize_gender.py    two-panel meme
+hypergamy_map.py       the 10x10 map, your arrow, the reach bands, svg (and png)
+visualize.py           drawn network -> hypergamy_network.png (legacy figure)
+visualize_gender.py    two-panel meme (legacy figure)
 visualize_chance.py    looks vs ambition vs income partial effects
-visualize_scale.py     hypergamy scale + competitor histogram
-animate.py             training frames -> training.gif
-neurons.py             stimulation experiment -> fruitfly_neurons.png
+gui.py                 stdlib web GUI: one page, every model, the map and the bands
+couples.py             measured ACS couple context + NHANES height percentile
+research.py            published evidence used as capped priors, with sources
+likes.py               dyad models: P(a specific package says yes to you)
 predict.py             single-date logit decomposition
+tests/test_hypergamy.py reference profile, average profiles, edge cases, random JSON,
+                       map invariants, CV metadata, anatomy direction, HTML hooks
 ```
 
-Generated (never hand-edited): `weights*.json`, `*.png`, `training.gif`,
-`training_frames.npz` (gitignored). `data/raw_speed_dating_195.csv`, `data/_*.csv` and
-`*.zip` are gitignored; `data/population_priors.json` is committed because it is small
-and `profile.py` uses it.
+Generated (never hand-edited): `weights*.json`, `*.png`, `*.svg`, `training_frames.npz`
+(gitignored). `data/raw_*.csv` and `*.zip` are gitignored; `data/population_priors.json`
+is committed because it is small and `profile.py` uses it.
 
 ## Data
 
@@ -57,7 +76,8 @@ and `profile.py` uses it.
 Joined from two public copies because neither is complete: the 195-variable file has
 preferences and self-ratings but an empty `income`; the 15-column copy has income.
 `data/build.py` refuses to join unless 11 shared columns agree row-for-row (they do,
-1.0000).
+1.0000). The export also keeps `race`, `race_o`, `samerace`, `imprace`, `imprelig` and
+`int_corr` (47 columns); they are context for analysis, not automatic model inputs.
 
 * target `dec` = did the participant want a second date; `dec_o` = the partner's decision;
   `match` = both said yes (16.5%).
@@ -70,6 +90,14 @@ preferences and self-ratings but an empty `income`; the 15-column copy has incom
 no outcome column. Used for height percentiles, body-type mix and ethnicity, never for
 training.
 
+**ACS 2023 1-year PUMS** (Census, CA/TX/FL/NY/IL): 250,172 opposite-sex married or
+cohabiting couples, 500,344 partner rows. Used only for measured couple context (partner
+age/income, age gap, same ethnicity/education), never as a date-acceptance label.
+
+**NHANES August 2021-August 2023** (CDC, DEMO_L + BMX_L): 6,262 adults with measured
+height. Used for height percentiles; the height-income correlation uses the poverty
+ratio, not actual income.
+
 ## Models (reference numbers — do not regress silently)
 
 | model | arch | CV | holdout | baseline |
@@ -81,12 +109,26 @@ training.
 | market men | 8→16→8→1 | 66.1% ± 2.5 | 66.4% | 61.5% |
 | market women | 8→16→8→1 | 63.9% ± 2.0 | 61.6% | 55.8% |
 | 18–25 | 16→24→12→1 | 79.8% ± 0.8 | 82.3% | 55.6% |
+| dyad men | 20→16→8→1 | 80.9% ± 1.1 | 81.3% | 50.1% |
+| dyad women | 20→16→8→1 | 79.5% ± 0.5 | 78.3% | 65.8% |
 
-Gradient checks 2.5e-09 to 1.1e-07. Temperature scaling (`temperature` in each weights
-file) calibrates probabilities on held-out data; it never changes a decision.
+All committed weight files run without training. Retraining with the same seed
+reproduced every CV above to four decimals; adding race/age-gap inputs made the taste
+model worse (78.5% vs 81.1% for men), so they were not forced in. Gradient
+checks 2.5e-09 to 1.1e-07. Temperature scaling (`temperature` in each weights file)
+calibrates probabilities on held-out data; it never changes a decision.
 
 Feature sets: `base` (10), `taste` (base + six stated preference weights), `market`
-(age, income, goal + five self-ratings). Targets: `dec`, `dec_o`, `match`.
+(age, income, goal + five self-ratings), `dyad` (20: target age/income/goal + target
+self-ratings + mean + rater importance + rater self-ratings). Targets: `dec`, `dec_o`,
+`match`.
+
+## Routing
+
+`route.py` decides which weights run: age 18–25 (or mode `18-25`) averages
+`weights_deep_{gender}.json` with `weights_young.json`; every other age uses the gender
+model alone. The market side always uses `weights_market_{gender}.json` — there is no
+age-specific market model and the code says so rather than pretending.
 
 ## Gotchas
 
@@ -94,22 +136,31 @@ Feature sets: `base` (10), `taste` (base + six stated preference weights), `mark
   bug silently dropped `W1` from `weights.json` once.
 * `predict()` returns shape `(n,)`; compare to `y.ravel()`, not `y`.
 * Impute NaN from `m["impute"]` at inference, and use the right width: the market model
-  has 8 inputs, the taste model 16. Passing taste rows to the market model throws a
-  broadcast error.
+  has 8 inputs, the taste model 16.
 * Per-element gradient error is meaningless (saturated tanh). Use the scale-normalised
   metric.
-* `fontweight="black"` falls back to bold; harmless warning.
+* `import profile` from `tools/` resolves to the stdlib profiler — insert the project
+  directory on `sys.path` first.
+* The SVG charts are generated text: never hand-edit them, regenerate with
+  `python hypergamy_map.py`.
 
 ## Honesty rules for the profile tool
 
-* `measured` = estimated from the 8,378 dates. Only age gap and same-race qualify.
-* `population` = percentile from OKCupid. Descriptive, no outcome.
-* `research` = published effect (Veale 2015, Lever 2006, Swami & Tovée 2013, Stulp 2013,
-  Holvoet 2017, Willoughby 2013). Cited in `adult.py` and README.
+* `measured` = estimated from the 8,378 dates, ACS couples or NHANES. Only the age gap,
+  same-race flag and the context tables qualify. ACS is *realised couples*, not a date
+  decision, and is never fed to the date network.
+* `population` = percentile from OKCupid or NHANES. Descriptive, no outcome.
+* `research` = published effect, cited in `adult.py` and README.
 * The whole adult layer is capped at ±8 points so it cannot outvote the networks.
+* The reach bands are relative to your own best cell (≥60% likely, 25–60% stretch,
+  below 25% hard). They are a model output, not a promise.
+* The four anatomy fields are not interchangeable: `size_cm` (man's own size) and
+  `own_cup` (woman's own chest) move `d_them`; `cup` (date's chest) and
+  `partner_size_cm` (preferred penis size) move `d_you`. The form hides the unused
+  pair; tests assert ignored fields do not move the result.
 * Never describe a `research` effect as trained. Never add a statistic without a source.
 
 ## Determinism
 
 `SEED = 7`; CV uses `SEED + 1`; bootstrap `SEED + 100`; figure jitter `default_rng(11)`
-and `(23)`. Same seed → byte-identical weights and PNGs.
+and `(23)`. Same seed → byte-identical weights and charts.

@@ -50,6 +50,9 @@ FEATURE_SETS = {
     "base": FEATURES,
     "taste": FEATURES + PREF,
     "market": ["age", "income", "goal"] + SELF,
+    # who says yes to whom: the date without the post-decision "like", plus the
+    # rater's stated wants and the rater's own ratings.
+    "dyad": [f for f in FEATURES if f != "like"] + PREF + SELF,
 }
 
 DEFAULTS = {

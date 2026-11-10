@@ -1,0 +1,4 @@
+numpy>=1.24
+matplotlib>=3.7
+# data builders only; the GUI and the networks run on numpy alone
+pandas>=2.0

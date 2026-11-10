@@ -23,7 +23,8 @@ but the data nearly agrees with it: 47.4% x 36.5% = 17.3% against an observed 16
   python profile.py --demo
   python profile.py --mode adult --gender 1 --age 24 --income 30000 \
       --self 7,7,7,7,5 --want 8,6,7,8,9,7 --importance 30,10,15,15,20,10
-  python profile.py --demo --chart        # also writes hypergamy_scale.png
+  python profile.py --demo --chart        # also writes hypergamy_map.png
+  python profile.py --range               # the partner range you can reach
 """
 
 import argparse
@@ -40,10 +41,6 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 MODELS = {
     "market": {0: "weights_market_women.json", 1: "weights_market_men.json"},
     "taste": {0: "weights_deep_women.json", 1: "weights_deep_men.json"},
-}
-FALLBACK = {
-    "market": {0: "weights_women.json", 1: "weights_men.json"},
-    "taste": {0: "weights_women.json", 1: "weights_men.json"},
 }
 LABEL = {0: "women", 1: "men"}
 SINGULAR = {0: "woman", 1: "man"}
@@ -62,8 +59,9 @@ DEFAULTS = {
     "want": [8.0, 6.0, 7.0, 8.0, 9.0, 7.0],
     "importance": [30.0, 10.0, 15.0, 15.0, 20.0, 10.0],
     # advanced
-    "height_in": 70.0,
+    "height_cm": 178.0,
     "body_type": "average",
+    "ethnicity": "not specified",
     "same_race": True,
     "age_gap": 3.0,
     "partner_income": 50000.0,
@@ -71,17 +69,26 @@ DEFAULTS = {
     "orientation_match": True,
     "kink_match": 3.0,
     "libido_match": 3.0,
-    "genital": 3.0,
-    "cup": 3.0,
+    "size_cm": 13.1,
+    "own_cup": "C",
+    "cup": "C",
+    "partner_size_cm": 13.1,
+    "partner_body": "average",
     "experience": 3.0,
 }
 
 
 def model_path(kind, gender):
-    for name in (MODELS[kind][gender], FALLBACK[kind][gender]):
-        if os.path.exists(os.path.join(HERE, name)):
-            return name
-    raise SystemExit(f"no {kind} weights found -- run train.py first")
+    name = MODELS[kind][gender]
+    if os.path.exists(os.path.join(HERE, name)):
+        return name
+    layers = "24,12" if kind == "taste" else "16,8"
+    target = "" if kind == "taste" else " --target dec_o"
+    raise SystemExit(
+        f"{name} is missing. Train it once (about a minute):\n"
+        f"  python train.py --features {kind}{target} --layers {layers} "
+        f"--gender {gender} --out {name}"
+    )
 
 
 def load(path):
@@ -247,12 +254,16 @@ def report(profile, gender, name=""):
     print(f"  you want           " + "  ".join(f"{p} {v:.0f}" for p, v in zip(PRETTY, profile["want"])))
     print(f"  stated importance  " + "  ".join(f"{p} {v:.0f}%" for p, v in zip(PRETTY, profile["importance"])))
     if mode in ("advanced", "adult"):
-        print(f"  what you are       {profile.get('height_in', 0):.0f} in, "
+        print(f"  what you are       {profile.get('height_cm', 0):.0f} cm, "
               f"{profile.get('body_type', '?')}, age gap {profile.get('age_gap', 0):.0f} yrs, "
               f"{'same race' if profile.get('same_race') else 'different race'}")
     if mode == "adult":
-        print(f"  adult layer        kink match {profile['kink_match']:.0f}/5, "
-              f"libido {profile['libido_match']:.0f}/5, experience {profile['experience']:.0f}/5")
+        print(f"  adult layer        kink {profile['kink_match']:.0f}/5, "
+              f"libido {profile['libido_match']:.0f}/5, "
+              f"your size {profile['size_cm']:.1f} cm / chest {profile['own_cup']}, "
+              f"partner {profile['partner_body']} / chest {profile['cup']} / "
+              f"preferred size {profile['partner_size_cm']:.1f} cm, "
+              f"experience {profile['experience']:.0f}/5")
     print()
     print(f"  a date says yes to you    {r['p_them']:5.1%}  {bar(r['p_them'])}")
     print(f"  you say yes to them       {r['p_you']:5.1%}  {bar(r['p_you'])}")
@@ -265,14 +276,17 @@ def report(profile, gender, name=""):
             if abs(delta) > 0.05:
                 print(f"    {label:<42} {delta:>+5.1f} pp   [{basis}]")
         print()
-    print(f"  HYPERGAMY  {r['percentile']:5.1f} / 100   percentile among {LABEL[gender]}"
-          if r["percentile"] == r["percentile"] else "  HYPERGAMY  n/a (dataset missing)")
+    print(f"  AMBITION VS LOOKS  {r['percentile']:5.1f} / 100   percentile among {LABEL[gender]}"
+          if r["percentile"] == r["percentile"] else "  AMBITION VS LOOKS  n/a (dataset missing)")
     print(f"    stated    ambition {profile['importance'][4]:.0f}% vs looks "
           f"{profile['importance'][0]:.0f}% of your importance")
     print(f"    revealed  +4 ambition -> {r['d_amb']:+.1f} pp   +4 looks -> {r['d_attr']:+.1f} pp")
     verdict = ("status moves you more than looks" if abs(r["d_amb"]) > abs(r["d_attr"])
                else "looks move you more than status")
     print(f"    verdict:  {verdict}")
+    reach = float(np.mean(profile["want"][:5])) - float(np.mean(profile["self"]))
+    print(f"  REACHING  {reach:+.1f} of 10   (how far above your own ratings you aim;")
+    print(f"            +10 = want perfect and rate yourself 0, -10 = the reverse)")
     print()
     if comp is None:
         print("  THE MARKET   dataset not in this checkout -- run data/build.py for the")
@@ -298,20 +312,21 @@ def demo(chart=False):
             "want": [9.0, 7.0, 6.0, 9.0, 6.0, 6.0],
             "importance": [40.0, 10.0, 5.0, 25.0, 10.0, 10.0]},
            0, "regular: the 23-year-old who wants a 10/10")
-    report({**base, "mode": "advanced", "age": 27.0, "income": 58000.0, "height_in": 72.0,
+    report({**base, "mode": "advanced", "age": 27.0, "income": 58000.0, "height_cm": 183.0,
             "body_type": "athletic", "age_gap": 4.0,
             "want": [7.0, 7.0, 7.0, 7.0, 8.0, 8.0],
             "importance": [25.0, 15.0, 15.0, 15.0, 20.0, 10.0]},
            1, "advanced: the 27-year-old who wants a peer")
-    report({**base, "mode": "adult", "age": 25.0, "income": 42000.0, "height_in": 69.0,
+    report({**base, "mode": "adult", "age": 25.0, "income": 42000.0, "height_cm": 175.0,
             "body_type": "curvy", "age_gap": 2.0, "kink_match": 5.0, "libido_match": 4.0,
+            "size_cm": 16.0, "cup": "D", "partner_body": "athletic",
             "experience": 4.0, "same_race": False,
             "want": [8.0, 7.0, 8.0, 8.0, 7.0, 9.0],
             "importance": [30.0, 15.0, 15.0, 15.0, 15.0, 10.0]},
            0, "adult: the 25-year-old who knows what she wants")
     if chart:
-        import visualize_scale
-        visualize_scale.render({**base, "mode": "advanced", "age": 27.0, "income": 58000.0}, 1)
+        import hypergamy_map
+        hypergamy_map.render({**base, "mode": "advanced", "age": 27.0, "income": 58000.0}, 1)
 
 
 def numbers(text, n, default):
@@ -333,17 +348,24 @@ def main():
     p.add_argument("--self", dest="self_")
     p.add_argument("--want")
     p.add_argument("--importance")
-    p.add_argument("--height", type=float, help="inches")
+    p.add_argument("--height", type=float, help="your height in cm")
     p.add_argument("--body", default="average", choices=adult.BODY_TYPES)
     p.add_argument("--age-gap", type=float, dest="age_gap")
     p.add_argument("--different-race", action="store_true")
     p.add_argument("--kink", type=float, help="kink compatibility 0-5")
     p.add_argument("--libido", type=float, help="libido compatibility 0-5")
-    p.add_argument("--genital", type=float, help="self-reported 1-5")
-    p.add_argument("--cup", type=float, help="partner build 1-5")
+    p.add_argument("--size", type=float, help="your size in cm (men)")
+    p.add_argument("--own-cup", default="C", choices=adult.CUP_SIZES,
+                   dest="own_cup", help="your chest size (women)")
+    p.add_argument("--cup", default="C", choices=adult.CUP_SIZES, help="partner chest size")
+    p.add_argument("--partner-size", type=float, dest="partner_size",
+                   help="preferred partner size in cm (men)")
+    p.add_argument("--partner-body", default="average", choices=adult.BODY_TYPES,
+                   dest="partner_body", help="partner build")
     p.add_argument("--experience", type=float, help="0-5")
     p.add_argument("--mismatch", action="store_true", help="orientation outside their pool")
     p.add_argument("--chart", action="store_true")
+    p.add_argument("--range", action="store_true", help="the partner range you can reach")
     p.add_argument("--demo", action="store_true")
     args = p.parse_args()
 
@@ -361,10 +383,18 @@ def main():
 
     profile = dict(DEFAULTS)
     profile["mode"] = args.mode
-    for key in ("age", "income", "goal", "height", "age_gap", "kink", "libido",
-                "genital", "cup", "experience"):
+    for key in ("age", "income", "goal", "age_gap", "kink", "libido", "experience"):
         if getattr(args, key) is not None:
             profile[key] = getattr(args, key)
+    if args.height is not None:
+        profile["height_cm"] = args.height
+    if args.size is not None:
+        profile["size_cm"] = args.size
+    if args.partner_size is not None:
+        profile["partner_size_cm"] = args.partner_size
+    profile["own_cup"] = args.own_cup
+    profile["cup"] = args.cup
+    profile["partner_body"] = args.partner_body
     profile["body_type"] = args.body
     profile["same_race"] = not args.different_race
     profile["orientation_match"] = not args.mismatch
@@ -374,8 +404,12 @@ def main():
 
     report(profile, gender)
     if args.chart:
-        import visualize_scale
-        visualize_scale.render(profile, gender)
+        import hypergamy_map
+        hypergamy_map.render(profile, gender)
+    if args.range:
+        import hypergamy_map
+        print()
+        print(hypergamy_map.describe(hypergamy_map.partner_map(profile, gender)))
 
 
 if __name__ == "__main__":
