@@ -218,3 +218,31 @@ The four anatomy fields are capped research priors, not measurements of a real d
 they cannot move a result by more than the adult layer's 8-point cap.
 Adding 250,172 couples did **not** raise the speed-date CV: those couples have a
 different outcome (who married), not who said yes on a date.
+
+## v1.4.0 — who you would most plausibly end up with
+
+No data shipped here follows a person to a lifetime partner, so the app does not pretend
+to predict one. `partner.py` answers the narrower, honest question:
+
+* **measured** — for your age and income, the ACS 2023 realised-couple distribution:
+  median partner age, partner income, age gap, same-ethnicity and same-education shares;
+* **not scored** — the ACS records no partner self-ratings or stated importance, and the
+  dyad models need both. Imputing them produced 52% mutual chances against a 16.5% base
+  rate, so the candidates are shown as measured profiles without a model score;
+* **research** — published directions on age gap and education homogamy only *order* those
+  candidates (England 2016; Kraft & Neimann 2009; IZA 15749). No probability is attached.
+
+HCMST is the right public panel for a lifetime-outcome model; it needs its own
+registration and is deliberately not shipped or trained here.
+
+Three fixes ship with it:
+
+* the API converts NaN/Infinity to `null`, so a clone without `data/speed_dating_full.csv`
+  returns valid JSON instead of `NaN`;
+* profiles outside the study's support (for example $1,000,000 at 80) return a visible
+  warning instead of a silent extrapolation;
+* every result carries an in-sample calibration table (predicted vs actually observed yes)
+  for the two headline models, because those probabilities are ranks, not frequencies.
+
+    python partner.py --demo
+    python partner.py --payload '{"gender":"man","age":18,"income":4500}'

@@ -31,9 +31,22 @@ import hypergamy_map
 import likes
 import research
 import route
-from profile import DEFAULTS, competitors, have_data, stated_hypergamy
+from profile import (DEFAULTS, calibration, competitors, have_data,
+                      stated_hypergamy, support_warnings)
+from partner import who_you_end_up_with
 
 HERE = os.path.dirname(os.path.abspath(__file__))
+
+
+def _json_safe(value):
+    """NaN and Infinity are not JSON; strict clients and the tests reject them."""
+    if isinstance(value, dict):
+        return {k: _json_safe(v) for k, v in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [_json_safe(v) for v in value]
+    if isinstance(value, float) and not np.isfinite(value):
+        return None
+    return value
 
 
 def compute(payload):
@@ -53,6 +66,7 @@ def compute(payload):
     profile["mode"] = payload.get("mode", "regular")
     profile["body_type"] = payload.get("body_type", "average")
     profile["ethnicity"] = payload.get("ethnicity", "not specified")
+    profile["education"] = payload.get("education", "bachelor")
     profile["same_race"] = bool(payload.get("same_race", True))
     profile["orientation_match"] = bool(payload.get("orientation_match", True))
     partner = 0 if payload.get("partner_gender", "women") == "women" else 1
@@ -136,7 +150,10 @@ def compute(payload):
             "rank": comp["rank"],
             "n": comp["n"],
         }
-    return result
+    result["partner"] = who_you_end_up_with(profile, gender, partner)
+    result["warnings"] = support_warnings(profile, gender, partner)
+    result["calibration"] = calibration(gender)
+    return _json_safe(result)
 
 
 PAGE = r"""<!doctype html>
@@ -315,7 +332,7 @@ PAGE = r"""<!doctype html>
         Nothing leaves this machine.</p></div>
   </div>
   <div class="header-meta"><span class="pill local">local only</span>
-    <span class="pill">v1.3.0</span><span class="pill">trained + measured</span></div>
+    <span class="pill">v1.4.0</span><span class="pill">trained + measured</span></div>
 </header>
 <main class="shell">
   <section class="panel form-panel" aria-labelledby="profile-title">
@@ -393,6 +410,13 @@ PAGE = r"""<!doctype html>
         </select>
         <div class="help">used only for the measured ACS couple context; it is not a
           trait score and it does not change the trained date decision.</div></div>
+      <div style="margin-top:10px"><label for="education">education (optional)</label>
+        <select id="education"><option value="high school or less">high school or less</option>
+          <option value="some college">some college</option>
+          <option value="bachelor" selected>bachelor</option>
+          <option value="graduate">graduate</option></select>
+        <div class="help">used only for the measured ACS same-education context; it does
+          not enter the trained date decision.</div></div>
       <label style="margin-top:10px"><input id="same_race" type="checkbox" checked
         style="width:auto"> same race as the date</label>
     </div>
@@ -529,6 +553,7 @@ function payload() {
     importance: [0,1,2,3,4,5].map(i => Number(document.getElementById("importance_" + i).value)),
     height_cm: num("height_cm"), body_type: document.getElementById("body_type").value,
     ethnicity: document.getElementById("ethnicity").value,
+    education: document.getElementById("education").value,
     age_gap: num("age_gap"), same_race: document.getElementById("same_race").checked,
     kink_match: num("kink_match"), libido_match: num("libido_match"),
     size_cm: num("size_cm"), own_cup: document.getElementById("own_cup").value,
@@ -651,6 +676,37 @@ function person_panel(r) {
   </div>`;
 }
 
+function partner_panel(r) {
+  const p = r.partner;
+  if (!p) return "";
+  if (!p.available) {
+    return `<h2 style="margin-top:16px">Who you end up with</h2>
+      <div class="context"><p style="margin:0">${p.note || "not available for this pairing."}</p></div>`;
+  }
+  const t = p.typical;
+  const money = v => v == null ? "n/a" : "$" + Math.round(v).toLocaleString();
+  const one = (v, s) => v == null ? "n/a" : Number(v).toFixed(1) + (s || "");
+  const pct1 = v => v == null ? "n/a" : Number(v).toFixed(1) + "%";
+  const rows = p.candidates.map(c => `<tr>
+      <td>${c.age.toFixed(0)} yrs, ${money(c.income)}</td>
+      <td>${c.age_quantile} age, ${c.income_quantile} income</td></tr>`).join("");
+  const ladder = p.ladder_level == null ? "" :
+    `<p style="margin:8px 0 0">The typical partner's self-ratings sit at
+     <b>${p.ladder_level.toFixed(1)} / 10</b> on the package ladder &mdash; measured from
+     real participants (${p.self_basis}), not modelled.</p>`;
+  return `<h2 style="margin-top:16px">Who you most plausibly end up with</h2>
+    <div class="context">
+      <p style="margin:0 0 4px">People with your age and income pair with a partner whose median
+      age is <b>${one(t.age, " yrs")}</b>, income <b>${money(t.income)}</b>, age gap
+      <b>${t.age_gap == null ? "n/a" : (t.age_gap > 0 ? "+" : "") + one(t.age_gap, " yrs")}</b>.
+      Same ethnicity in <b>${pct1(t.same_ethnicity_pct)}</b> of those couples, same education
+      in <b>${pct1(t.same_education_pct)}</b>.</p>
+      ${ladder}
+      <table>${rows}</table>
+      <div class="help">${p.note}<br><br>${p.stability_note}</div>
+    </div>`;
+}
+
 function market_panel(r) {
   const c = r.market_context;
   if (!c || !c.available) return '';
@@ -667,6 +723,9 @@ function market_panel(r) {
   const eth = c.ethnicity_cell;
   const ethRows = eth ? `<tr><td>same ethnicity, ${c.ethnicity} couples</td>
     <td>${pct1(eth.same_eth_pct)} (n=${eth.n.toLocaleString()})</td></tr>` : '';
+  const edu = c.education_cell;
+  const eduRows = edu ? `<tr><td>same education, ${c.education} couples</td>
+    <td>${pct1(edu.same_edu_pct)} (n=${edu.n.toLocaleString()})</td></tr>` : '';
   const heightRow = h.your_percentile == null ? '' :
     `<tr><td>your measured height percentile</td>
       <td>${h.your_percentile.toFixed(0)} (NHANES, n=${h.n.toLocaleString()})</td></tr>`;
@@ -682,7 +741,7 @@ function market_panel(r) {
         <tr><td>partner income / yours, median</td><td>${ratio.median == null ? 'n/a' : Number(ratio.median).toFixed(2) + 'x'}</td></tr>
         <tr><td>same ethnicity</td><td>${pct1(cell.same_eth_pct)}</td></tr>
         <tr><td>same education</td><td>${pct1(cell.same_edu_pct)}</td></tr>
-        ${heightRow}${ethRows}
+        ${heightRow}${ethRows}${eduRows}
       </table>
       <div class="help">ACS 2023 1-year PUMS, opposite-sex married or cohabiting couples.
       These are <b>realised couples</b>, not dating decisions and not a prediction of who
@@ -712,7 +771,7 @@ function render(r) {
     <table>${r.adjustments.map(a =>
       `<tr><td>${a.label}</td><td>${a.pp > 0 ? "+" : ""}${a.pp.toFixed(1)} pp ${chip(a.basis)}</td></tr>`).join("")}</table>` : "";
   const hyper = r.hypergamy ? `<h2 style="margin-top:16px">Ambition vs looks</h2>
-    <p style="margin:0">${r.hypergamy.percentile.toFixed(1)} / 100 among ${r.gender === "man" ? "men" : "women"}:
+    <p style="margin:0">${r.hypergamy.percentile == null ? "n/a" : r.hypergamy.percentile.toFixed(1)} / 100 among ${r.gender === "man" ? "men" : "women"}:
     how much importance you put on ambition compared with looks.
     Your tilt ${r.hypergamy.you_tilt.toFixed(0)}/100, the partner you want ${r.hypergamy.partner_tilt.toFixed(0)}/100.</p>` : "";
   const market = r.market ? `<h2 style="margin-top:16px">The market</h2>
@@ -766,8 +825,11 @@ function render(r) {
     </div>`;
   const verdict = r.map ? `<div class="verdict">${r.map.verdict}</div>` : "";
 
+  const warn = r.warnings && r.warnings.length
+    ? `<div class="research" style="background:#fff5f8;border-color:#f3d4e1">
+        ${r.warnings.map(w => `<div>${w}</div>`).join("")}</div>` : "";
   document.getElementById("result").innerHTML = `
-    ${big}${hero}${verdict}${league}${likes_panel(r)}${person_panel(r)}
+    ${warn}${big}${hero}${verdict}${league}${likes_panel(r)}${person_panel(r)}${partner_panel(r)}
     ${adj}${hyper}${market}${map}${market_panel(r)}${research_panel(r)}
     ${r.map && r.map.same_gender ? `<p class="muted" style="margin-top:12px">Same-gender
       pairing: the study only recorded opposite-gender dates, so read these numbers as an
@@ -796,6 +858,15 @@ function render(r) {
       according to the market model. It is about 64% accurate, so read it as a rough market
       estimate, not as a score of your worth. "Rank vs levels" is different: it compares you
       with the ten made-up packages, and it is not a rating of you either.</p>
+      <p><b>who you end up with</b> — measured from 250,172 ACS couples: the median partner
+      age, income and age gap for people with your age and income, scored by the dyad models
+      on that measured grid. It is not a lifetime forecast; no shipped data follows a person
+      to a partner.</p>
+      <p><b>calibration</b> — ${r.calibration ? `on ${r.calibration.n.toLocaleString()}
+      ${r.gender === "man" ? "male" : "female"} rows the model's own predictions are compared
+      with what actually happened: ${r.calibration.taste.slice(0, 5).map(b => `${b.range}
+      predicted ${b.predicted}, observed ${b.observed}`).join("; ")}. The ends are compressed,
+      so read the headline as a rank, not a frequency.` : "needs data/build.py."}</p>
     </details>
     <h2 style="margin-top:16px">Models used</h2>
     <p class="muted" style="margin:0 0 6px">${r.routing}</p>

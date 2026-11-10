@@ -149,6 +149,19 @@ def _fallback_cell(gender_key, age, income):
     return None, band, income_band(income), "no age/income cell; using overall"
 
 
+
+def _education_cell(table, name):
+    """ACS education table keyed by group; tolerate either label spelling."""
+    if not table or not name:
+        return None
+    if name in table:
+        return table[name]
+    first = str(name).split()[0].lower()
+    for key, value in table.items():
+        if first and (first in key.lower() or key.lower() in str(name).lower()):
+            return value
+    return None
+
 def context(profile, gender, partner_gender):
     """Measured ACS/NHANES context for one profile, or None when data is absent."""
     p = priors()
@@ -187,6 +200,9 @@ def context(profile, gender, partner_gender):
             "top_partner_eth_pct": source.get("top_partner_eth_pct"),
         }
 
+    edu_name = profile.get("education")
+    edu_cell = _education_cell(p.get("education", {}).get(key, {}), edu_name)
+
     out = {
         "available": True,
         "same_gender": False,
@@ -201,6 +217,8 @@ def context(profile, gender, partner_gender):
         "overall": put(overall),
         "ethnicity": eth_name,
         "ethnicity_cell": put(eth_cell),
+        "education": edu_name,
+        "education_cell": put(edu_cell),
         "height": height_context(profile, gender),
     }
     return out

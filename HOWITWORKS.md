@@ -156,3 +156,21 @@ part of the release verification.
   n=4,148); Joyal and Carpentier 2017; Willoughby et al. 2013 (n=1,054 couples).
 * **Anatomy priors:** the cup and size effects are the same capped research priors
 documented in `adult.py`; no public dataset here pairs them with a second date.
+
+## v1.4.0 — the partner panel
+
+```
+ACS 2023 couples ── median partner age/income/gap ──> candidate grid (9, measured only)
+
+NHANES height + OKCupid body ── population priors ──> package-ladder position
+
+published studies ── age gap, education homogamy ──> research note (orders, never scores)
+```
+
+The grid is the measured 25th/50th/75th percentile of partner age crossed with the same
+percentiles of partner income, so it is deterministic and every candidate is a real point
+of the measured distribution. The candidates carry no model score: the ACS has no partner
+self-ratings or stated importance, and imputing them pushed the dyad model far outside the
+data it was trained on. The median self-ratings only position the typical partner on the
+3-10 package ladder, labelled as measured. Same-gender pairing returns "not available"
+because the ACS priors are opposite-sex.

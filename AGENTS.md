@@ -37,6 +37,7 @@ python generate.py --train           # person-generator weights
 python gui.py                        # the GUI, http://127.0.0.1:8000
 python hypergamy_map.py              # the map: svg + png + the reach bands
 python profile.py --demo
+python partner.py --demo
 python adult.py
 python -m unittest discover -s tests -v   # 15-test v1.3.0 regression suite
 ```
@@ -61,6 +62,7 @@ gui.py                 stdlib web GUI: one page, every model, the map and the ba
 couples.py             measured ACS couple context + NHANES height percentile
 research.py            published evidence used as capped priors, with sources
 likes.py               dyad models: P(a specific package says yes to you)
+partner.py             measured who you end up with: ACS couples, no model score
 predict.py             single-date logit decomposition
 tests/test_hypergamy.py reference profile, average profiles, edge cases, random JSON,
                        map invariants, CV metadata, anatomy direction, HTML hooks
@@ -152,6 +154,8 @@ age-specific market model and the code says so rather than pretending.
 * `population` = percentile from OKCupid or NHANES. Descriptive, no outcome.
 * `research` = published effect, cited in `adult.py` and README.
 * The whole adult layer is capped at ±8 points so it cannot outvote the networks.
+* "Who you end up with" is measured ACS couples plus dyad scores on that measured grid.
+  It is not a lifetime model; HCMST is the right data for that and is not shipped.
 * The reach bands are relative to your own best cell (≥60% likely, 25–60% stretch,
   below 25% hard). They are a model output, not a promise.
 * The four anatomy fields are not interchangeable: `size_cm` (man's own size) and

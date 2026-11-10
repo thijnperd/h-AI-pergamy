@@ -286,5 +286,54 @@ class AccuracyMetadataTest(unittest.TestCase):
         self.assertIn("@media (max-width: 980px)", gui.PAGE)
 
 
+
+class PartnerAndCalibrationTest(unittest.TestCase):
+    """The measured "who you end up with" panel and the honesty fixes."""
+
+    def test_measured_partner_panel(self):
+        result = run(MY_PROFILE)
+        panel = result["partner"]
+        self.assertTrue(panel["available"])
+        self.assertGreater(panel["n_couples"], 200_000)
+        self.assertEqual(len(panel["candidates"]), 9)
+        self.assertTrue(panel["most_typical"]["most_typical"])
+        self.assertGreaterEqual(panel["typical"]["same_education_pct"], 0.0)
+        self.assertLessEqual(panel["typical"]["same_education_pct"], 100.0)
+        self.assertIn("realised couples", panel["note"])
+        self.assertNotIn("mutual", json.dumps(panel["candidates"]))
+
+    def test_partner_ladder_is_measured(self):
+        panel = run(MY_PROFILE)["partner"]
+        self.assertIsNotNone(panel["ladder_level"])
+        self.assertGreaterEqual(panel["ladder_level"], 1.0)
+        self.assertLessEqual(panel["ladder_level"], 10.0)
+        self.assertTrue(panel["self_median"])
+
+    def test_same_gender_partner_is_unavailable(self):
+        result = run({**MY_PROFILE, "partner_gender": "men"})
+        self.assertFalse(result["partner"]["available"])
+        self.assertTrue(result["partner"]["same_gender"])
+
+    def test_out_of_support_profile_warns(self):
+        result = run({**MY_PROFILE, "age": 80, "income": 1_000_000})
+        self.assertTrue(result["warnings"])
+        self.assertTrue(any("extrapolation" in w or "reliable" in w
+                            for w in result["warnings"]))
+
+    def test_calibration_block(self):
+        result = run(MY_PROFILE)
+        cal = result["calibration"]
+        self.assertEqual(cal["scope"], "in-sample")
+        self.assertGreater(cal["n"], 3000)
+        self.assertTrue(cal["taste"])
+        self.assertTrue(cal["market"])
+
+    def test_education_uses_the_acs_table(self):
+        result = run({**MY_PROFILE, "education": "graduate"})
+        cell = result["market_context"]["education_cell"]
+        self.assertIsNotNone(cell)
+        self.assertGreater(cell["n"], 0)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

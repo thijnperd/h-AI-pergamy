@@ -30,6 +30,7 @@ but the data nearly agrees with it: 47.4% x 36.5% = 17.3% against an observed 16
 import argparse
 import json
 import os
+from functools import lru_cache
 
 import numpy as np
 
@@ -65,6 +66,8 @@ DEFAULTS = {
     "same_race": True,
     "age_gap": 3.0,
     "partner_income": 50000.0,
+    "education": "bachelor",
+
     # adult
     "orientation_match": True,
     "kink_match": 3.0,
@@ -91,6 +94,7 @@ def model_path(kind, gender):
     )
 
 
+@lru_cache(maxsize=16)
 def load(path):
     with open(os.path.join(HERE, path), encoding="utf-8") as f:
         model = json.load(f)
@@ -141,6 +145,102 @@ def have_data():
     except SystemExit:
         return False
 
+
+
+@lru_cache(maxsize=2)
+def _support(gender):
+    """Where the training data actually lives, for out-of-range warnings."""
+    try:
+        X, _ = load_dataset(gender=gender, features=FEATURE_SETS["taste"])
+    except SystemExit:
+        return None
+    age, income = X[:, 0], X[:, 1]
+    ok = ~np.isnan(income)
+    young = age < 25
+    young_income = income[young & ok]
+    return {
+        "n": int(len(X)),
+        "age_p01": float(np.nanpercentile(age, 1)),
+        "age_p99": float(np.nanpercentile(age, 99)),
+        "income_p01": float(np.nanpercentile(income[ok], 1)) if ok.any() else None,
+        "income_p99": float(np.nanpercentile(income[ok], 99)) if ok.any() else None,
+        "young_n": int((young & ok).sum()),
+        "young_income_p95": (float(np.nanpercentile(young_income, 95))
+                             if young_income.size >= 30 else None),
+    }
+
+
+def support_warnings(profile, gender, partner_gender):
+    """Say when the profile is outside the data instead of extrapolating silently."""
+    stats = _support(gender)
+    label = "men" if gender else "women"
+    if stats is None:
+        return ["data/speed_dating_full.csv is missing, so the out-of-range check is "
+                "skipped. Run data/build.py."]
+    out = []
+    age = float(profile.get("age", 24.0))
+    income = float(profile.get("income", 0.0))
+    if age < stats["age_p01"] or age > stats["age_p99"]:
+        out.append("age %.0f is outside the study's 1st-99th percentile (%.0f-%.0f) for %s."
+                   % (age, stats["age_p01"], stats["age_p99"], label))
+    if income > 0 and stats["income_p01"] is not None and (
+            income < stats["income_p01"] or income > stats["income_p99"]):
+        out.append("income $%s is outside the study's 1st-99th percentile ($%s-$%s); "
+                   "the trained number is an extrapolation."
+                   % (format(int(income), ","), format(int(stats["income_p01"]), ","),
+                      format(int(stats["income_p99"]), ",")))
+    if (age < 25 and stats["young_income_p95"] is not None
+            and income > stats["young_income_p95"]):
+        out.append("only %d %s under 25 in the study report income, and $%s is above "
+                   "their 95th percentile ($%s); treat the number as unreliable."
+                   % (stats["young_n"], label, format(int(income), ","),
+                      format(int(stats["young_income_p95"]), ",")))
+    if partner_gender == gender:
+        out.append("same-gender pairing: the study only recorded opposite-gender dates, "
+                   "so every trained number here is an extrapolation.")
+    return out
+
+
+def _batch_predict(model, layers, X):
+    Z = np.where(np.isnan(X), np.asarray(model["impute"], float), X)
+    A = (Z - np.asarray(model["mu"], float)) / np.asarray(model["sigma"], float)
+    for i, (W, b) in enumerate(layers):
+        z = A @ W + b
+        if i == len(layers) - 1:
+            return (1.0 / (1.0 + np.exp(-z / float(model.get("temperature", 1.0))))).ravel()
+        A = np.tanh(z)
+
+
+@lru_cache(maxsize=2)
+def calibration(gender):
+    """Predicted vs actually observed yes, in-sample, for the two headline models."""
+    try:
+        taste, taste_layers = load(model_path("taste", gender))
+        market, market_layers = load(model_path("market", gender))
+        Xt, yt = load_dataset(gender=gender, features=FEATURE_SETS["taste"])
+        Xm, ym = load_dataset(gender=gender, features=FEATURE_SETS["market"], target="dec_o")
+    except (SystemExit, FileNotFoundError):
+        return None
+    if len(Xt) != len(Xm):
+        return None
+    pt = _batch_predict(taste, taste_layers, Xt)
+    pm = _batch_predict(market, market_layers, Xm)
+
+    def buckets(p, y):
+        rows = []
+        edges = [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.01]
+        for lo, hi in zip(edges[:-1], edges[1:]):
+            sel = (p >= lo) & (p < hi)
+            if not sel.any():
+                continue
+            rows.append({"range": "%d-%d%%" % (int(lo * 100), int(min(hi, 1.0) * 100)),
+                         "n": int(sel.sum()),
+                         "predicted": "%.1f%%" % (100 * p[sel].mean()),
+                         "observed": "%.1f%%" % (100 * y[sel].mean())})
+        return rows
+
+    return {"n": int(len(Xt)), "scope": "in-sample",
+            "taste": buckets(pt, yt), "market": buckets(pm, ym)}
 
 def revealed(profile, gender):
     if gender in _REVEALED:

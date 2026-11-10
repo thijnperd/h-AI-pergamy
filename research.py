@@ -84,6 +84,37 @@ SOURCES = {
 }
 
 
+
+SOURCES.update({
+    "england2016": {
+        "label": "England 2016, Journal of Marriage and Family 78:1184-1194",
+        "url": "https://onlinelibrary.wiley.com/doi/abs/10.1111/jomf.12314",
+        "finding": "National Survey of Families and Households: age heterogamy itself did "
+                   "not raise divorce odds; both men and women were more likely to leave "
+                   "when their spouse was older than they were.",
+    },
+    "kraft2009": {
+        "label": "Kraft & Neimann 2009, IZA Discussion Paper 4491",
+        "url": "https://docs.iza.org/dp4491.pdf",
+        "finding": "German data: the risk of divorce rose with the absolute age difference; "
+                   "a difference in education did not affect marital stability.",
+    },
+    "iza2023": {
+        "label": "IZA Discussion Paper 15749 (2022), educational structure of marriage",
+        "url": "https://docs.iza.org/dp15749.pdf",
+        "finding": "US newlyweds: a four-year within-couple age gap was associated with a "
+                   "16 percentage-point higher probability of divorce within four years "
+                   "than the same age; educationally homogamous marriages were most stable.",
+    },
+    "hcmst": {
+        "label": "Rosenfeld, Thomas & Falcon, HCMST (Stanford / ICPSR 30103)",
+        "url": "https://data.stanford.edu/hcmst",
+        "finding": "The public panel that follows couples across waves and records "
+                   "breakup and marriage; it is the right data for a lifetime-outcome "
+                   "model, needs its own registration, and is not shipped or trained here.",
+    },
+})
+
 def height_slope_multiplier(gender, height_cm):
     """A small own-height interaction for the height-gap prior.
 
@@ -161,6 +192,21 @@ def notes(profile, gender, partner_gender):
             "applied": "shown as measured same-ethnicity/same-education context; the "
                        "only ethnicity input in the profile is the measured same-race "
                        "flag; the ethnicity dropdown is context, not a model feature.",
+        },
+        "stability": {
+            "title": "Does a big age gap or a different education make a couple break up?",
+            "summary": "The published studies agree on a direction, not a number: larger "
+                       "age gaps are associated with more dissolution, while the education "
+                       "effect is weak or absent in some samples and a stability advantage "
+                       "in others.",
+            "detail": "Kraft & Neimann 2009 found divorce risk rising with the absolute age "
+                      "difference and no education effect. IZA 15749 reports a four-year age "
+                      "gap going with a 16 percentage-point higher divorce probability within "
+                      "four years among US newlyweds, and a homogamy advantage. England 2016 "
+                      "finds the direction is about who is older, not heterogeneity alone.",
+            "applied": "used only to order the candidate partners in the 'who you end up "
+                       "with' panel; no probability is attached and it says nothing about "
+                       "one particular relationship.",
         },
         "sources": list(SOURCES.values()),
     }
