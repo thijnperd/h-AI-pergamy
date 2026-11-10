@@ -130,9 +130,11 @@ def main():
     if "--demo" in sys.argv or not sys.stdin.isatty():
         X, _ = load_dataset()
         dream = np.array([10.0] * len(FEATURES))
+        dream[FEATURES.index("age")] = 27.0
         dream[FEATURES.index("income")] = 69487.0
-        mean = X.mean(axis=0)
-        print("\n=== a date rated 10/10 on everything ===")
+        dream[FEATURES.index("goal")] = 4.0
+        mean = np.nanmean(X, axis=0)
+        print("\n=== a date rated 10/10 on every attribute ===")
         explain(dream, W1, b1, W2, b2, mu, sigma)
         print("\n=== the average participant in the dataset ===")
         explain(mean, W1, b1, W2, b2, mu, sigma)

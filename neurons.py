@@ -293,7 +293,8 @@ def render(rows, meta, path):
     ax.text(
         FIGSIZE[0] / 2,
         1.50,
-        "Each dish is one hidden neuron on all 3,581 dates  ·  top bar = driven to full firing (tanh +1), bottom bar = silenced (tanh -1).\n"
+        f"Each dish is one hidden neuron on all {meta['n_rows']:,} dates  ·  "
+        "top bar = driven to full firing (tanh +1), bottom bar = silenced (tanh -1).\n"
         "Bars are the measured shift in P(second date); the crimson dish is the neuron that reverses the most yes/no decisions.",
         ha="center",
         va="center",
@@ -333,6 +334,8 @@ def render(rows, meta, path):
 def main():
     m, W1, b1, W2, b2, mu, sigma = load_model()
     X, y = load_dataset()
+    # train.py uses all 8,378 dates with median-filled gaps; inference must too
+    X = np.where(np.isnan(X), np.asarray(m["impute"], dtype=float), X)
     Xs = (X - mu) / sigma
     A, p = forward(Xs, W1, b1, W2, b2)
 
@@ -399,6 +402,7 @@ def main():
         "winner": winner["label"],
         "winner_idx": winner_idx,
         "flips": winner["no_to_yes"] + winner["yes_to_no"],
+        "n_rows": int(len(X)),
     }
     render(rows, meta, OUT)
     print(f"\nwrote {OUT}")

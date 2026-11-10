@@ -1,59 +1,88 @@
 """Train a tiny 10 -> 10 -> 1 neural network (pure NumPy, no frameworks).
 
 Dataset: "Speed Dating Experiment" (Kaggle: annavictoria/speed-dating-experiment),
-a 428 KB CSV of 8,378 speed dates from 2002-2004. Each row is one date: how the
-participant rated their partner on six attributes, plus who they were, and
-whether they said yes to a second date (dec = 0/1).
+8,378 speed dates from 2002-2004. Each row is one date: how the participant rated
+their partner on six attributes, plus who they were, and whether they said yes to a
+second date (dec = 0/1).
+
+All 8,378 dates are used: the 3,581 complete rows plus median-imputed columns for
+the rest (income alone is blank on half the rows). 300 epochs with L2 1e-3 was
+picked by 5-fold CV -- see `cross_validate`.
 
 The network predicts dec from 10 inputs. Layer 1 is 10x10, which is exactly the
 shape of the hypergamy meme -> see visualize.py.
 
-Every run checks its own backprop against finite differences, and reports the
-validation accuracy next to the majority-class baseline and a bootstrap interval,
-so the "it learned something" claim is measured rather than asserted.
+Every run checks its own backprop against finite differences, and reports 5-fold CV
+accuracy next to the majority-class baseline and a bootstrap interval, so the "it
+learned something" claim is measured rather than asserted.
+
+  python train.py                                       # everyone -> weights.json
+  python train.py --gender 1 --out weights_men.json     # men's decisions
+  python train.py --gender 0 --out weights_women.json   # women's decisions
 """
 
 import csv
 import json
 import os
+import sys
 
 import numpy as np
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 DATA = os.path.join(HERE, "data", "speed_dating.csv")
 OUT = os.path.join(HERE, "weights.json")
+SNAP = os.path.join(HERE, "training_frames.npz")
 
 # 10 inputs -> the 10 people in the left column of the drawing.
 FEATURES = ["age", "income", "goal", "attr", "sinc", "intel", "fun", "amb", "shar", "like"]
 TARGET = "dec"
 HIDDEN = 10
 
-EPOCHS = 900
+EPOCHS = 300
 LR = 0.08
+L2 = 1e-3
 VAL_FRACTION = 0.2
 SEED = 7
+CV_FOLDS = 5
+SNAPSHOT_EVERY = 10
+
+GENDER_LABEL = {None: "all participants", 0: "women", 1: "men"}
 
 
-def load_dataset():
+def load_dataset(gender=None):
+    """All rows with a target, NaN where an input is blank.
+
+    `gender` 0 = women, 1 = men in the Kaggle codebook; the drawings rely on it.
+    """
     with open(DATA, newline="", encoding="utf-8-sig") as f:
         rows = list(csv.DictReader(f))
 
     X, y = [], []
     for row in rows:
         try:
-            X.append([float(row[k]) for k in FEATURES])
-            y.append(float(row[TARGET]))
+            target = float(row[TARGET])
         except (KeyError, TypeError, ValueError):
-            continue  # skip rows with blanks
+            continue
+        if gender is not None and str(row.get("gender", "")).strip() != str(gender):
+            continue
+        values = []
+        for key in FEATURES:
+            raw = (row.get(key) or "").strip()
+            try:
+                values.append(float(raw))
+            except (TypeError, ValueError):
+                values.append(np.nan)
+        X.append(values)
+        y.append(target)
 
     return np.asarray(X, dtype=float), np.asarray(y, dtype=float).reshape(-1, 1)
 
 
-def standardize(train, val):
+def standardize(train, other):
     mu = train.mean(axis=0)
     sigma = train.std(axis=0)
     sigma[sigma == 0] = 1.0
-    return (train - mu) / sigma, (val - mu) / sigma, mu, sigma
+    return (train - mu) / sigma, (other - mu) / sigma, mu, sigma
 
 
 def sigmoid(z):
@@ -129,72 +158,133 @@ def bootstrap_ci(correct, iters=2000, seed=SEED + 100):
     return float(np.percentile(draws, 2.5)), float(np.percentile(draws, 97.5))
 
 
-def train(X, y):
-    rng = np.random.default_rng(SEED)
+def predict(net, mu, sigma, X):
+    return net.forward((X - mu) / sigma)[1].ravel()
 
-    idx = rng.permutation(len(X))
-    cut = int(len(X) * (1.0 - VAL_FRACTION))
-    Xtr, Xva = X[idx[:cut]], X[idx[cut:]]
-    ytr, yva = y[idx[:cut]], y[idx[cut:]]
 
-    Xtr, Xva, mu, sigma = standardize(Xtr, Xva)
+def fit(Xtr, ytr, rng, epochs=EPOCHS, Xva=None, yva=None, record=False):
+    """Train on already-imputed raw inputs. Returns (net, mu, sigma, frames)."""
+    mu = Xtr.mean(axis=0)
+    sigma = Xtr.std(axis=0)
+    sigma[sigma == 0] = 1.0
+    Xs = (Xtr - mu) / sigma
+    Xv = None if Xva is None else (Xva - mu) / sigma
+
     net = Network(Xtr.shape[1], HIDDEN, rng)
-
     params = [net.W1, net.b1, net.W2, net.b2]
-    grads = [np.zeros_like(p) for p in params]
     m = [np.zeros_like(p) for p in params]
     v = [np.zeros_like(p) for p in params]
     beta1, beta2, eps = 0.9, 0.999, 1e-8
+    frames = []
 
-    history = []
-    for epoch in range(1, EPOCHS + 1):
-        g = net.gradients(Xtr, ytr)
-        for i, (p, gi) in enumerate(zip(params, g)):
-            grads[i] = gi
+    for epoch in range(1, epochs + 1):
+        gW1, gb1, gW2, gb2 = net.gradients(Xs, ytr)
+        grads = [gW1 + L2 * net.W1, gb1, gW2 + L2 * net.W2, gb2]
+        for i, (p, gi) in enumerate(zip(params, grads)):
             m[i] = beta1 * m[i] + (1 - beta1) * gi
             v[i] = beta2 * v[i] + (1 - beta2) * gi ** 2
             m_hat = m[i] / (1 - beta1 ** epoch)
             v_hat = v[i] / (1 - beta2 ** epoch)
             p -= LR * m_hat / (np.sqrt(v_hat) + eps)
 
-        if epoch % 100 == 0 or epoch == 1:
-            history.append(
+        if record and (epoch % SNAPSHOT_EVERY == 0 or epoch == epochs):
+            frames.append(
                 {
                     "epoch": epoch,
-                    "train_loss": round(net.loss(Xtr, ytr), 4),
-                    "val_loss": round(net.loss(Xva, yva), 4),
+                    "W1": net.W1.copy(),
+                    "b1": net.b1.copy(),
+                    "W2": net.W2.ravel().copy(),
+                    "b2": net.b2.copy(),
+                    "train_loss": net.loss(Xs, ytr),
+                    "val_loss": net.loss(Xv, yva),
+                    "val_acc": float(((net.forward(Xv)[1] > 0.5) == yva).mean()),
                 }
             )
-            print(f"epoch {epoch:4d}  train_loss {history[-1]['train_loss']:.4f}  val_loss {history[-1]['val_loss']:.4f}")
 
-    def accuracy(Xs, ys):
-        return float(((net.forward(Xs)[1] > 0.5) == ys).mean())
+    return net, mu, sigma, frames
 
-    val_correct = ((net.forward(Xva)[1] > 0.5) == yva).ravel().astype(float)
+
+def train(X, y):
+    rng = np.random.default_rng(SEED)
+
+    idx = rng.permutation(len(X))
+    cut = int(len(X) * (1.0 - VAL_FRACTION))
+    Xtr_raw, Xva_raw = X[idx[:cut]], X[idx[cut:]]
+    ytr, yva = y[idx[:cut]], y[idx[cut:]]
+
+    # Medians come from the training split only; income is blank on ~half the rows.
+    median = np.nanmedian(Xtr_raw, axis=0)
+    Xtr = np.where(np.isnan(Xtr_raw), median, Xtr_raw)
+    Xva = np.where(np.isnan(Xva_raw), median, Xva_raw)
+
+    net, mu, sigma, frames = fit(Xtr, ytr, rng, Xva=Xva, yva=yva, record=True)
+
+    val_correct = ((predict(net, mu, sigma, Xva) > 0.5) == yva.ravel()).astype(float)
     ci_lo, ci_hi = bootstrap_ci(val_correct)
 
     stats = {
-        "acc_train": accuracy(Xtr, ytr),
-        "acc_val": accuracy(Xva, yva),
+        "acc_train": float(((predict(net, mu, sigma, Xtr) > 0.5) == ytr.ravel()).mean()),
+        "acc_val": float(val_correct.mean()),
         "n_train": len(Xtr),
         "n_val": len(Xva),
         "majority_val": float(max(yva.mean(), 1.0 - yva.mean())),
         "ci_val": (ci_lo, ci_hi),
-        "grad_err": gradient_check(net, Xtr, ytr),
+        "grad_err": gradient_check(net, (Xtr - mu) / sigma, ytr),
+        "median": median,
+        "mu": mu,
+        "sigma": sigma,
+        "frames": frames,
     }
-    return net, mu, sigma, stats, history
+    return net, stats
+
+
+def cross_validate(X, y, folds=CV_FOLDS):
+    """Honest 5-fold accuracy; medians/standardisation refit inside each fold."""
+    rng = np.random.default_rng(SEED + 1)
+    idx = rng.permutation(len(X))
+    accs = []
+    for f in range(folds):
+        test = idx[f::folds]
+        tr = np.setdiff1d(idx, test)
+        med = np.nanmedian(X[tr], axis=0)
+        Xtr = np.where(np.isnan(X[tr]), med, X[tr])
+        Xte = np.where(np.isnan(X[test]), med, X[test])
+        net, mu, sigma, _ = fit(Xtr, y[tr], np.random.default_rng(SEED))
+        pred = predict(net, mu, sigma, Xte)
+        accs.append(float(((pred > 0.5) == y[test].ravel()).mean()))
+    return float(np.mean(accs)), float(np.std(accs))
 
 
 def main():
-    X, y = load_dataset()
-    print(f"loaded {len(X)} dates  ({y.mean():.1%} said yes)")
+    args = sys.argv[1:]
+    gender = int(args[args.index("--gender") + 1]) if "--gender" in args else None
+    out = args[args.index("--out") + 1] if "--out" in args else OUT
+
+    X, y = load_dataset(gender)
+    complete = int((~np.isnan(X)).all(axis=1).sum())
+    print(
+        f"loaded {len(X):,} dates for {GENDER_LABEL[gender]}  "
+        f"({y.mean():.1%} said yes, {complete:,} complete, rest median-filled)"
+    )
     print("inputs:", ", ".join(FEATURES))
 
-    net, mu, sigma, stats, history = train(X, y)
+    net, stats = train(X, y)
+
+    for f in stats["frames"]:
+        if f["epoch"] % 100 == 0 or f["epoch"] == EPOCHS:
+            print(
+                f"epoch {f['epoch']:4d}  train_loss {f['train_loss']:.4f}  "
+                f"val_loss {f['val_loss']:.4f}  val_acc {f['val_acc']:.1%}"
+            )
+
+    cv_mean, cv_std = cross_validate(X, y)
 
     print(
-        f"\ntrain accuracy {stats['acc_train']:.1%}   "
-        f"val accuracy {stats['acc_val']:.1%}   "
+        f"\n5-fold CV accuracy {cv_mean:.1%} +/- {cv_std:.1%}   "
+        f"({CV_FOLDS} folds, same architecture, L2 {L2:g}, {EPOCHS} epochs)"
+    )
+    print(
+        f"holdout: train {stats['acc_train']:.1%}   val {stats['acc_val']:.1%}   "
         f"[95% CI {stats['ci_val'][0]:.1%}-{stats['ci_val'][1]:.1%}]"
     )
     lift = stats["acc_val"] - stats["majority_val"]
@@ -202,11 +292,19 @@ def main():
     verdict = "PASS" if stats["grad_err"] < 1e-5 else "FAIL"
     print(f"gradient check vs finite differences: error {stats['grad_err']:.1e} (limit 1e-5)  {verdict}")
 
-    # Meme demo: what does the net think of a date rated 10/10 on everything?
+    # Meme demo: a plausible date rated 10/10 on every attribute.
     dream = np.array([[10.0] * len(FEATURES)])
-    dream[:, FEATURES.index("income")] = 69487.0  # income is dollars, not a 1-10 score
-    p = float(net.forward((dream - mu) / sigma)[1][0, 0])
-    print(f"a date rated 10/10 on everything -> P(second date) = {p:.1%}")
+    dream[:, FEATURES.index("age")] = 27.0
+    dream[:, FEATURES.index("income")] = 69487.0   # dollars, not a 1-10 score
+    dream[:, FEATURES.index("goal")] = 4.0         # 4 = looking for a relationship
+    p = float(predict(net, stats["mu"], stats["sigma"], dream)[0])
+    print(f"a date rated 10/10 on every attribute (age 27) -> P(second date) = {p:.1%}")
+
+    history = [
+        {"epoch": f["epoch"], "train_loss": round(f["train_loss"], 4), "val_loss": round(f["val_loss"], 4)}
+        for f in stats["frames"]
+        if f["epoch"] % 100 == 0 or f["epoch"] == EPOCHS
+    ]
 
     payload = {
         "features": FEATURES,
@@ -215,24 +313,43 @@ def main():
         "b1": net.b1.tolist(),
         "W2": net.W2.tolist(),
         "b2": net.b2.tolist(),
+        "mu": stats["mu"].tolist(),
+        "sigma": stats["sigma"].tolist(),
+        "impute": stats["median"].tolist(),
         "accuracy_train": round(stats["acc_train"], 4),
         "accuracy_val": round(stats["acc_val"], 4),
         "accuracy_val_ci": [round(stats["ci_val"][0], 4), round(stats["ci_val"][1], 4)],
+        "accuracy_cv": round(cv_mean, 4),
+        "accuracy_cv_std": round(cv_std, 4),
         "majority_val": round(stats["majority_val"], 4),
         "grad_check_max_rel_err": float(f"{stats['grad_err']:.3e}"),
         "p_10_out_of_10": round(p, 4),
-        "mu": mu.tolist(),
-        "sigma": sigma.tolist(),
         "n_train": stats["n_train"],
         "n_val": stats["n_val"],
         "n_rows": int(len(X)),
+        "n_complete": complete,
         "epochs": EPOCHS,
+        "l2": L2,
         "history": history,
     }
-    with open(OUT, "w", encoding="utf-8") as f:
+    with open(out, "w", encoding="utf-8") as f:
         json.dump(payload, f, indent=2)
+    print(f"\nwrote {out}")
 
-    print(f"\nwrote {OUT}")
+    if gender is None:
+        frames = stats["frames"]
+        np.savez_compressed(
+            SNAP,
+            epochs=np.array([f["epoch"] for f in frames]),
+            W1=np.array([f["W1"] for f in frames]),
+            b1=np.array([f["b1"] for f in frames]),
+            W2=np.array([f["W2"] for f in frames]),
+            b2=np.array([f["b2"] for f in frames]),
+            train_loss=np.array([f["train_loss"] for f in frames]),
+            val_loss=np.array([f["val_loss"] for f in frames]),
+            val_acc=np.array([f["val_acc"] for f in frames]),
+        )
+        print(f"wrote {SNAP}  ({len(frames)} frames)")
 
 
 if __name__ == "__main__":

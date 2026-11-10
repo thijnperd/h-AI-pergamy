@@ -37,7 +37,7 @@ TOP_CONNECTIONS = 24  # only draw the strongest weights, 100 arrows would be sou
 SHORT = {
     "age": "age",
     "income": "income",
-    "goal": "wants kids?",
+    "goal": "dating goal",
     "attr": "attractive",
     "sinc": "sincere",
     "intel": "intelligent",
