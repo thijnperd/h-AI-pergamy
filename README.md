@@ -1,180 +1,215 @@
-# HYPERGAMY: a neural network, drawn like the meme
+# HYPERGAMY
 
-A tiny 10 → 10 → 1 network written from scratch in NumPy, trained on 8,378 speed
-dates, rendered as the hypergamy diagram — then split into the meme's two panels,
-interrogated one neuron at a time, and animated while it learns.
+A neural network trained on **8,378 real speed dates**, drawn as the hypergamy meme,
+and wrapped in a profile tool that estimates **your chance of a mutual yes** and **how
+hypergamous you are** — with regular, advanced and adult modes.
 
-![the diagram](hypergamy_network.png)
+Everything below is computed. No decorative arrows, no invented statistics, no
+"AI" that is a lookup table.
 
-![whom men say yes to, whom women say yes to](hypergamy_men_women.png)
-
-![the fruit-fly test](fruitfly_neurons.png)
-
-## Dataset
-
-**Speed Dating Experiment** — Kaggle: [`annavictoria/speed-dating-experiment`](https://www.kaggle.com/datasets/annavictoria/speed-dating-experiment)
-(CC0, 2002–2004, Columbia University; Fisman & Iyengar, *Gender Differences in Mate
-Selection*).
-
-The copy in `data/speed_dating.csv` is a trimmed version of it (428 KB, 8,378 dates,
-15 columns) hosted publicly here:
-<https://raw.githubusercontent.com/keithmcnulty/speed_dating/master/speed_data_data.csv>
-
-Each row is one four-minute date. The participant rated their partner 1–10 on
-attractiveness, sincerity, intelligence, fun, ambitiousness and shared interests,
-and then said whether they wanted a second date (`dec`).
-
-Columns: `gender, age, income, goal, career, dec, attr, sinc, intel, fun, amb, shar, like, prob, met`
-
-* 8,378 dates, 42.0% said yes.
-* Only **3,581** rows are complete on the 10 inputs; `income` alone is blank on half
-  the dataset. The rest are filled with **training-set medians**, so all 8,378 dates
-  contribute. Medians are stored in `weights.json` and reused at inference.
-* `gender` is 0 = women, 1 = men in the Kaggle codebook. The data agrees: the
-  gender-0 careers are social work/teaching, gender-1 are consulting/finance.
-
-## The network
-
-```
-10 inputs            hidden layer        output
-age       ┐    ┌── h1 ──┐
-income    ├────┼── h2 ──┤
-goal      ├────┼── h3 ──┼──── P(second date)
-attr      ├────┼  ...   ┤
-sinc      ├────┼── h9 ──┤
-intel     │    └── h10 ─┘
-fun       │
-amb       │    W1: 10x10   ← this is what gets drawn
-shar      │    W2: 10x1
-like      ┘
+```mermaid
+flowchart LR
+    S["Speed Dating<br/>8,378 dates · 195 variables"] --> B["data/build.py<br/>join + clean"]
+    O["OKCupid profiles<br/>59,946 people"] --> P["population_priors.json<br/>height · body type · ethnicity"]
+    B --> D1["drawn network<br/>10 → 10 → 1"]
+    B --> D2["taste network<br/>16 → 24 → 12 → 1"]
+    B --> D3["market network<br/>8 → 16 → 8 → 1"]
+    B --> D4["18–25 network<br/>16 → 24 → 12 → 1"]
+    D1 --> F["figures<br/>meme · GIF · fly test"]
+    D2 --> PR["profile.py"]
+    D3 --> PR
+    D4 --> SC["hypergamy scale<br/>competitor rank"]
+    P --> PR
+    PR --> SC
 ```
 
-* hidden units: `tanh`, 10 of them
-* output: `sigmoid` (binary cross-entropy)
-* optimiser: Adam, lr 0.08, **L2 1e-3, 300 full-batch epochs** (chosen by 5-fold CV)
-* **5-fold CV 77.4% ± 1.2%**, holdout **75.8%** (95% CI 73.8–77.9%) against a
-  **57.0% majority-class baseline**, i.e. **+18.8 pp**
-* a date rated 10/10 on every attribute (age 27, looking for a relationship) gets
-  **98.7%**
+## The idea
 
-That is up from 76.5% CV for the first version (3,581 complete rows, 900 epochs, no
-L2). The gain came from using all the data and regularising, not from a bigger
-network — the 10×10 layer is the joke, so it stays.
+The meme says women choose up and men choose down. The honest way to test a meme is to
+train a real model on real choices and then look at what it does, including where it
+disagrees with the joke.
 
-## Is it real?
+Two networks answer two different questions, and keeping them apart is the whole design:
 
-`train.py` proves it on every run instead of asking you to trust it:
+```mermaid
+flowchart TB
+    YOU["what you are<br/>age · income · goal · self-ratings"] --> M["market network<br/>trained on dec_o<br/>the other person's decision"]
+    THEM["what you want<br/>six ratings + six importance weights"] --> T["taste network<br/>trained on dec<br/>your decision"]
+    M --> PM["P(a date says yes to you)"]
+    T --> PT["P(you say yes to them)"]
+    PM --> MUT["P(mutual yes) = product"]
+    PT --> MUT
+    MUT --> SCALE["hypergamy scale<br/>+ competitor rank"]
+```
 
-* **Backprop is checked against central finite differences**: worst error
-  **2.5e-09** of the largest gradient (limit 1e-5). Per-element relative error is
-  useless here because saturated tanh units have ~1e-11 gradients; the metric is
-  scale-normalised, and that trap is documented in `AGENTS.md`.
-* **Accuracy is reported against the trivial baseline**, with a bootstrap interval
-  and a 5-fold CV number where medians and standardisation are refit inside each
-  fold — no leakage.
-* **Training is deterministic**: same seed, same weights, byte-identical PNG.
-* **Inference uses saved training statistics** (`mu`, `sigma`, `impute`), so
-  `predict.py` and `neurons.py` cannot silently skew from training.
+Multiplying assumes independence. The data nearly agrees: 47.4% × 36.5% = 17.3%, against
+an observed match rate of 16.5%.
 
-## Whom men say yes to, whom women say yes to
+## What was actually trained
 
-The meme's actual format is two panels. So: two networks, one per side, same
-architecture, trained on each participant group's decisions.
+| model | inputs | architecture | 5-fold CV | holdout | baseline |
+|---|---|---|---|---|---|
+| drawn (the meme) | 10 | 10 → 10 → 1 | 77.4% ± 1.2 | 75.8% | 57.0% |
+| taste, all | 16 | 16 → 24 → 12 → 1 | **80.0% ± 0.9** | 76.5% | 57.0% |
+| taste, men | 16 | 16 → 24 → 12 → 1 | **81.1% ± 2.1** | 81.3% | 50.1% |
+| taste, women | 16 | 16 → 24 → 12 → 1 | **80.3% ± 1.8** | 76.2% | 65.8% |
+| market, men | 8 | 8 → 16 → 8 → 1 | 66.1% ± 2.5 | 66.4% | 61.5% |
+| market, women | 8 | 8 → 16 → 8 → 1 | 63.9% ± 2.0 | 61.6% | 55.8% |
+| 18–25 only | 16 | 16 → 24 → 12 → 1 | **79.8% ± 0.8** | 82.3% | 55.6% |
 
-| | men (4,194 dates) | women (4,184 dates) |
+```mermaid
+xychart-beta
+    title "5-fold cross-validated accuracy by model"
+    x-axis ["drawn", "all", "men", "women", "18-25"]
+    y-axis "accuracy (%)" 60 --> 85
+    bar [77.4, 80.0, 81.1, 80.3, 79.8]
+```
+
+Every run computes its own backprop check against central finite differences
+(**2.5e-09** on the drawn model, limit 1e-5), a bootstrap interval, a majority-class
+baseline, and refits medians and standardisation inside each CV fold.
+
+Depth plus the stated preferences bought **+2.6 points** over the 10×10 network. The
+market models are weaker on purpose-free grounds: knowing someone's age, income and
+self-ratings predicts other people's choices far less well than knowing how they rate
+the person in front of them. That is reported, not hidden.
+
+## The three modes
+
+| mode | inputs | where the numbers come from |
 |---|---|---|
-| 5-fold CV | **78.4% ± 0.9%** | **76.8% ± 0.5%** |
-| holdout | 77.0% | 77.5% |
-| majority baseline | 50.1% | 65.8% |
-| lift | **+26.9 pp** | **+11.7 pp** |
+| `regular` | six self-ratings, six wanted ratings, six importance weights | trained taste + market networks |
+| `advanced` | adds height, body type, race, age gap, desired income | networks **+ measured effects + real population percentiles** |
+| `adult` | adds orientation, kink and libido compatibility, experience, body/size variables | networks **+ published research priors**, capped at ±8 points |
 
-The honest result: **the two panels are more alike than the meme implies.** Both
-funnel into a handful of dominant attributes, and their holdout scores are half a
-percentage point apart. What differs is the mix of arrows, not the existence of a
-funnel. Women said no far more often (65.8%), which is why the women's panel has a
-higher baseline and a smaller lift.
-
-## The fruit-fly test
-
-In 2024 the FlyWire consortium published the complete connectome of an adult
-*Drosophila*: every neuron, every synapse. A wiring diagram is a hypothesis about
-what a neuron does; the experiment is to switch the neuron on and watch the animal
-behave. `neurons.py` runs the same protocol on this network, which is small enough
-to test exhaustively.
-
-For each of the 10 hidden neurons, over all 8,378 dates: clamp it to `+1`
-(stimulate), clamp it to `-1` (silence), recompute every prediction, and count the
-yes/no decisions that actually reverse.
-
-* **Neuron #6 is the command neuron.** Stimulating it adds **+17.9 pp** to the
-  average probability, silencing it costs 16.3 pp, and it reverses **4,230**
-  decisions. Clamping it on alone turns **2,201 of 4,996 "no" dates into "yes"**.
-  It is triggered by *high attractiveness* (d = 3.2).
-* **Neuron #9 has the largest mean shift**: silencing it drops the average by
-  26.9 pp.
-* **Three of ten neurons flip nothing** (#5, #8, #10): they move the average without
-  ever crossing the decision line. Most of the layer modulates; a few decide.
-
-## Gen Z field notes
-
-Researched because the meme is mostly shared by people the data predates. The
-speed-dating study is 2002–2004; its participants are today's parents.
-
-* **The belief is gendered, and measurable.** In a May 2025 Ipsos/JOE poll of 2,475
-  UK adults, young men said they think women prioritise looks (50%) and financial
-  status (39%). Young women themselves ranked humour and kindness first.
-  → [Ipsos](https://www.ipsos.com/en-uk/young-men-believe-women-prioritise-attractiveness-and-financial-status-when-dating-young-women-say)
-* **Money is the Gen Z dating topic.** Over half of Gen Z report spending nothing on
-  dates in a typical month (Bank of America *Better Money Habits*, 2026), and 47% of
-  men — versus 34% of women — still think the man should pay for the whole date
-  (Talker Research for Chime, 2025).
-  → [BofA report](https://newsroom.bankofamerica.com/content/dam/newsroom/docs/2026/BofA_BMH_2026_GenZ_Report.pdf),
-  [Talker](https://talkerresearch.com/younger-singles-find-income-transparency-attractive)
-* **The strong hypergamy claim does not survive long-run data.** A 2025 PLOS ONE
-  study of English marriages from 1837 to 2021 found **no significant hypergamy by
-  women**, measured by fathers' occupational status and surname-linked house values.
-  → [PLOS ONE](https://journals.plos.org/plosone/article?id=10.1371/journal.pone.0316769)
-
-None of this is required to enjoy the diagram. It is there so the caption can say
-"the diagram is a hypothesis, the weights are the test" and mean it.
-
-## Try it on a date
-
-```bash
-python predict.py                  # prompts for the ten inputs, Enter = default
-python predict.py attr=10 fun=9    # or pass overrides directly
-python predict.py --demo           # three canned dates
+```mermaid
+flowchart LR
+    R["regular<br/>10 numbers"] --> A["advanced<br/>+ height, build, race, age gap"]
+    A --> B["adult<br/>+ orientation, kink, libido, size"]
+    R --> S["trained model"]
+    A --> S
+    B --> S
+    S --> O["chance · hypergamy · competitor rank"]
 ```
 
-It prints the probability and the exact logit decomposition — `b2 + Σ a_j·W2_j` —
-with the same `#1..#10` labels as the drawings.
+The adult mode is deliberately quiet about itself: it adds at most a few points, prints
+`[research]` next to every adjustment it makes, and never claims to be trained. The
+reason is simple — **nobody has published a dataset of kinks and body measurements paired
+with second-date decisions.** Rather than invent one, the effects come from the
+literature and the tool says so.
 
-## Running it
+### What the research says
+
+| claim | number | source |
+|---|---|---|
+| erect length, population mean | 13.12 cm / 5.17 in | Veale et al. 2015, 15,521 men |
+| erect girth, population mean | 11.66 cm / 4.59 in | Veale et al. 2015 |
+| women who say erect size is important | **15%** | Lever et al. 2006, 52,031 people |
+| women satisfied with partner's size | **85%** | Lever et al. 2006 |
+| men preferring medium breasts | 32.7% (large 24.4%, very large 19.1%) | Swami & Tovée 2013 |
+| women wanting larger breasts | 47.5% (23.2% smaller, 29.3% satisfied) | Breast Size Satisfaction Survey, 18,541 women |
+| BDSM fantasy / practice / identity | 40–70% / ~20% / 7.6% | Holvoet 2017; Joyal 2017; reviews |
+| preferred height gap | women +25 cm, men −7 cm, matches peak at +19 cm | Stulp et al. 2013, 128,104 choices |
+| desire discrepancy | common; predicts lower satisfaction | Willoughby et al. 2013, 1,054 couples |
+
+That is why size sits in the *middle* of the scale rather than at the top: the evidence
+says being near the population median is fine, the 75th–95th percentile helps slightly,
+and the extreme top end stops helping. The tool encodes that shape instead of a fantasy.
+
+## The hypergamy scale and the market
+
+`visualize_scale.py` (and `profile.py --chart`) draws two things:
+
+```mermaid
+flowchart LR
+    H["stated importance<br/>ambition vs looks"] --> HS["hypergamy score 0-100"]
+    HS --> HP["percentile among your gender"]
+    HS --> PLOT["you vs the partner you asked for"]
+    C["every opposite-gender row"] --> MK["market network score"]
+    MK --> TQ["closest quartile by stated wants"]
+    TQ --> RANK["your rank among them"]
+```
+
+* **The scale** is the ratio of ambition to looks in what you say you want, placed
+  against the same ratio for everyone else in the study, with your position and the
+  position of the partner you asked for marked on it.
+* **The market** scores every opposite-gender participant with the market network,
+  keeps the quarter whose stated wants are closest to yours, and reports where you sit.
+  "Top 25% of 1,156 competitors" is a measured rank, not a compliment.
+
+![hypergamy scale](hypergamy_scale.png)
+
+## Datasets
+
+| dataset | rows | what it gives | what it cannot give |
+|---|---|---|---|
+| Speed Dating Experiment (Columbia, 2002–04) | 8,378 dates, 195 variables | the decision, both sides' ratings, stated preferences, self-ratings, race, age gap | height, body type, kinks, size |
+| OKCupid profiles (JSE, 2016) | 59,946 profiles, 22 variables | real distributions of height, body type, ethnicity, orientation | any outcome — there is no decision column |
+
+The two are not merged. Speed dating trains everything; OKCupid only supplies
+population percentiles, and `adult.py` labels those `[population]`, not `[measured]`.
+
+**There is no public dataset of adult preferences with dating outcomes.** The largest
+real decision dataset is the speed-dating one, and it is 8,378 rows. It was not possible
+to honestly make it "way bigger", so the upgrade here is *wider*: the full 195-variable
+file instead of the 15-column convenience copy, joined with the income column that only
+the convenience copy has.
+
+## Run it
 
 ```bash
 python -m pip install numpy matplotlib
-python train.py                 # all participants -> weights.json + training_frames.npz
-python train.py --gender 1 --out weights_men.json
-python train.py --gender 0 --out weights_women.json
-python visualize.py             # -> hypergamy_network.png
-python visualize_gender.py      # -> hypergamy_men_women.png
-python animate.py               # -> training.gif (30 frames, ~1 MB)
-python neurons.py               # -> fruitfly_neurons.png
-python predict.py               # score one date, neuron by neuron
+python data/build.py            # downloads + joins the datasets
+python train.py --snapshots     # the drawn 10x10 model + animation frames
+python train.py --features taste --layers 24,12 --epochs 400 --lr 0.05 \
+                --gender 1 --out weights_deep_men.json
+python train.py --features taste --layers 24,12 --epochs 400 --lr 0.05 \
+                --gender 0 --out weights_deep_women.json
+python train.py --features market --target dec_o --layers 16,8 --gender 1 \
+                --out weights_market_men.json
+python train.py --features market --target dec_o --layers 16,8 --gender 0 \
+                --out weights_market_women.json
+python train.py --features taste --layers 24,12 --min-age 18 --max-age 25 \
+                --out weights_young.json
+python visualize.py
+python visualize_gender.py
+python visualize_chance.py
+python visualize_scale.py
+python animate.py
+python neurons.py
+python predict.py --demo
 ```
 
-## How the drawing works
+Your own profile:
 
-* **Left column** = the 10 inputs, one pink person each.
-* **Right column** = the 10 hidden neurons, one blue person each.
-* **Arrows** = the 10×10 weight matrix of layer 1. Arrowhead points at the neuron,
-  thickness and opacity scale with `|w|`, crimson = positive, blue = negative.
-* Only the **24 strongest** of the 100 connections are drawn per panel. All 100 is soup.
-* Hidden units are **sorted by total incoming weight** so popular neurons sit at the
-  top; hidden units are permutation-symmetric, so the order is free to choose.
-* That sorted order defines **`#1..#10` in every figure and in `predict.py`**.
-* The **GIF** replays the training snapshots (every 10 epochs) with the final column
-  order fixed, so you see the weights move rather than the neurons jump.
+```bash
+python profile.py --mode regular --gender 1 --age 24 --income 30000 \
+    --self 7,7,7,7,5 --want 8,6,7,8,9,7 --importance 30,10,15,15,20,10
 
-The one thing that isn't a joke: every arrow is a trained weight, every bar in the
-fly figure is a re-run of the network, and the Gen Z lines are sourced.
+python profile.py --mode adult --gender 0 --age 25 --income 42000 --height 66 \
+    --body curvy --age-gap 2 --kink 5 --libido 4 --experience 4 --chart
+
+python profile.py --demo        # three worked examples, one per mode
+python adult.py                 # the effect table, prevalence and sources
+```
+
+Without the CSVs in the checkout, `profile.py` still runs from the saved weights and
+says which parts it had to skip.
+
+## Is it real?
+
+* backprop checked against finite differences on every run;
+* 5-fold CV with medians and scaling refit inside each fold;
+* probabilities temperature-calibrated on held-out data, so a 0.9 is not a 0.999;
+* the drawn network's 100 arrows are the actual `W1` matrix;
+* the fly test clamps real neurons and counts decisions that reverse (#6 reverses 4,230);
+* every adjustment in advanced/adult mode is printed with its basis: `measured`,
+  `population` or `research`.
+
+## Limits
+
+The speed dates are 2002–2004 and last four minutes; a "yes" is a second date, not a
+marriage. The market model is 64–66% accurate, so the chance it prints is an estimate
+with real error bars. Partner income is not in the data, so "status" is ambition plus
+your own income. Adult effects are priors, not learned weights, and are capped so they
+cannot dominate the trained models.

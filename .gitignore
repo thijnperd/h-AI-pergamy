@@ -1,3 +1,6 @@
 __pycache__/
 *.pyc
 training_frames.npz
+data/raw_speed_dating_195.csv
+data/_*.csv
+*.zip
