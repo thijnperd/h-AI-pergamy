@@ -153,6 +153,8 @@ def partner_map(profile, gender):
         "their_yes": float(their_yes),
         "your_yes": float(p_you_say_yes(profile, gender, profile["importance"])),
         "chance": float(probs[best]),
+        "chance_your_level": float(probs[level - 1]),
+        "chance_typical": float(probs[4]),
         "percentile": percentile,
         "hypergamy": hypergamy,
         "he_curve": he_curve,
@@ -161,20 +163,99 @@ def partner_map(profile, gender):
     }
 
 
+def verdict(result):
+    """One plain sentence, so nobody has to read a grid to know where they stand."""
+    gender = result["gender"]
+    target = PLURAL[1 - gender]
+    chance = result["chance"]
+    if chance >= 0.40:
+        mood = "good" if chance >= 0.55 else "decent"
+    else:
+        mood = "low"
+    return (f"A {mood} chance: about {chance:.0%} of level {result['best_level']} {target} "
+            f"would say yes to you and you would say yes back. "
+            f"With a level {result['your_level']} (your own level) it is "
+            f"{result['chance_your_level']:.0%}; with a middle-of-the-road level 5 it is "
+            f"{result['chance_typical']:.0%}.")
+
+
 def describe(result):
     gender = result["gender"]
     target = SINGULAR[1 - gender]
-    lines = [f"hypergamy score   {result['hypergamy']:+.1f}  (range -10 to +10)"]
-    lines.append(f"attractiveness    {result['percentile']:.0f} / 100 vs the ten same-gender packages")
-    lines.append(f"chance            {result['chance']:.1%} mutual with your best level "
-                 f"({target} level {result['best_level']})")
+    lines = [verdict(result), ""]
+    lines.append(f"best level        {result['best_level']} ({target}) with {result['chance']:.1%} mutual")
+    lines.append(f"your own level    {result['your_level']} with {result['chance_your_level']:.1%} mutual")
+    lines.append(f"middle level     5 with {result['chance_typical']:.1%} mutual")
+    lines.append(f"hypergamy         {result['hypergamy']:+.1f} of 10  "
+                 f"(negative = you value looks more than status, positive = the reverse)")
+    lines.append(f"attractiveness    {result['percentile']:.0f} of 100  "
+                 f"(the share of the ten same-gender packages the market model puts below you)")
     lines.append("")
-    lines.append(f"  level  mutual   band      what it means")
+    lines.append("  level  mutual   band      what it means")
     for band in result["bands"]:
         note = {"likely": "in range", "stretch": "needs something to change",
                 "hard": "out of reach on these stats"}[band["band"]]
         lines.append(f"  {band['level']:>5}  {band['mutual']:>6.1%}   {band['band']:<8}  {note}")
+    lines.append("")
+    lines.append("  bands compare each level to your best cell: 60% or more is likely,")
+    lines.append("  25% to 60% is stretch, below 25% is hard.")
     return "\n".join(lines)
+
+
+def arrows_svg(result):
+    """The arrow panel on its own, for embedding in the GUI."""
+    grid = result["matrix"]
+    top = float(grid.max()) or 1.0
+    you = result["gender"]
+    width, height = 680, 420
+    left, right, first, step = 96, 560, 54, 34
+    best_row = [int(np.argmax(grid[i])) for i in range(LEVELS)]
+    best_col = [int(np.argmax(grid[:, j])) for j in range(LEVELS)]
+    parts = [
+        f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {width} {height}" '
+        f'width="100%" role="img" font-family="Helvetica,Arial,sans-serif">',
+        f'<rect width="{width}" height="420" fill="#ffffff"/>',
+        '<text x="16" y="24" font-size="13" font-weight="bold" fill="#111">'
+        'what average people do, and your arrow</text>',
+    ]
+    for i in range(LEVELS):
+        y = first + i * step
+        parts.append(f'<circle cx="{left}" cy="{y}" r="5" fill="#c2185b"/>')
+        parts.append(f'<text x="{left - 10}" y="{y + 4}" font-size="10" text-anchor="end" '
+                     f'fill="#6b6b6b">M{i + 1}</text>')
+        j = best_row[i]
+        ty = first + j * step
+        sw = 0.5 + 2.2 * float(grid[i, j]) / top
+        parts.append(f'<line x1="{left + 7}" y1="{y}" x2="{right - 7}" y2="{ty}" '
+                     f'stroke="#1b9ad6" stroke-opacity="0.6" stroke-width="{sw:.2f}"/>')
+    for j in range(LEVELS):
+        y = first + j * step
+        parts.append(f'<circle cx="{right}" cy="{y}" r="5" fill="#1b9ad6"/>')
+        parts.append(f'<text x="{right + 12}" y="{y + 4}" font-size="10" '
+                     f'fill="#6b6b6b">W{j + 1}</text>')
+        i = best_col[j]
+        ty = first + i * step
+        sw = 0.5 + 2.2 * float(grid[i, j]) / top
+        parts.append(f'<line x1="{left + 7}" y1="{ty}" x2="{right - 7}" y2="{y}" '
+                     f'stroke="#c2185b" stroke-opacity="0.6" stroke-width="{sw:.2f}"/>')
+    start = first + (result["your_level"] - 1) * step
+    end = first + (result["best_level"] - 1) * step
+    colour = "#111"
+    if you == 1:
+        parts.append(f'<line x1="{left + 7}" y1="{start}" x2="{right - 7}" y2="{end}" '
+                     f'stroke="{colour}" stroke-width="3"/>')
+        parts.append(f'<text x="{left + 16}" y="{start - 8}" font-size="11" '
+                     f'font-weight="bold" fill="{colour}">your arrow</text>')
+    else:
+        parts.append(f'<line x1="{left + 7}" y1="{end}" x2="{right - 7}" y2="{start}" '
+                     f'stroke="{colour}" stroke-width="3"/>')
+        parts.append(f'<text x="{right - 84}" y="{start - 8}" font-size="11" '
+                     f'font-weight="bold" fill="{colour}">your arrow</text>')
+    parts.append(f'<text x="16" y="404" font-size="10" fill="#8a8a8a">'
+                 f'blue: each man to the woman he is most likely to match with  ·  '
+                 f'pink: each woman to the man  ·  black: you ({result["chance"]:.0%})</text>')
+    parts.append('</svg>')
+    return "".join(parts)
 
 
 PALETTE = ["#ffffff", "#fce9f1", "#f8d2e3", "#f2b3ce", "#e98cb4",
