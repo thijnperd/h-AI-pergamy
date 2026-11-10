@@ -23,7 +23,8 @@ but the data nearly agrees with it: 47.4% x 36.5% = 17.3% against an observed 16
   python profile.py --demo
   python profile.py --mode adult --gender 1 --age 24 --income 30000 \
       --self 7,7,7,7,5 --want 8,6,7,8,9,7 --importance 30,10,15,15,20,10
-  python profile.py --demo --chart        # also writes hypergamy_scale.png
+  python profile.py --demo --chart        # also writes hypergamy_map.png
+  python profile.py --range               # the partner range you can reach
 """
 
 import argparse
@@ -312,8 +313,8 @@ def demo(chart=False):
             "importance": [30.0, 15.0, 15.0, 15.0, 15.0, 10.0]},
            0, "adult: the 25-year-old who knows what she wants")
     if chart:
-        import visualize_scale
-        visualize_scale.render({**base, "mode": "advanced", "age": 27.0, "income": 58000.0}, 1)
+        import hypergamy_map
+        hypergamy_map.render({**base, "mode": "advanced", "age": 27.0, "income": 58000.0}, 1)
 
 
 def numbers(text, n, default):
@@ -346,6 +347,7 @@ def main():
     p.add_argument("--experience", type=float, help="0-5")
     p.add_argument("--mismatch", action="store_true", help="orientation outside their pool")
     p.add_argument("--chart", action="store_true")
+    p.add_argument("--range", action="store_true", help="the partner range you can reach")
     p.add_argument("--demo", action="store_true")
     args = p.parse_args()
 
@@ -376,8 +378,12 @@ def main():
 
     report(profile, gender)
     if args.chart:
-        import visualize_scale
-        visualize_scale.render(profile, gender)
+        import hypergamy_map
+        hypergamy_map.render(profile, gender)
+    if args.range:
+        import hypergamy_map
+        print()
+        print(hypergamy_map.describe(hypergamy_map.partner_map(profile, gender)))
 
 
 if __name__ == "__main__":
