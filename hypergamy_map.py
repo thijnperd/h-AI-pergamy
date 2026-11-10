@@ -12,7 +12,7 @@ questions on one picture:
   * **your arrow** -- your profile scored against the same ten women (or men),
     drawn in black, with the cell you land in outlined.
 
-The ten levels are *packages*, not ten real people: looks, age and income all move
+The ten packages are *bundles*, not ten real people: looks, age and income all move
 together, which is what makes the grid interesting instead of one bright column.
 
     python hypergamy_map.py            # table + hypergamy_map.svg + .png
@@ -42,7 +42,7 @@ PLURAL = {0: "women", 1: "men"}
 
 
 def rating(level):
-    """Level 1 is a 3/10, level 10 is a 10/10."""
+    """Package 1 is a 3/10, package 10 is a 10/10."""
     return 3.0 + 7.0 * (level - 1) / (LEVELS - 1)
 
 
@@ -146,8 +146,11 @@ def partner_map(profile, gender, partner_gender=None):
     rivals = [p_they_say_yes(archetype(gender, k), gender) for k in range(1, LEVELS + 1)]
     percentile = 100.0 * float(np.mean(np.asarray(rivals) < their_yes))
 
-    amb, attr = float(profile["importance"][4]), float(profile["importance"][0])
-    hypergamy = 10.0 * (amb - attr) / (amb + attr) if (amb + attr) > 0 else 0.0
+    # Reaching, not importance: how far above (or below) your own ratings you aim.
+    # All zeros who wants all tens -> +10; all tens who wants zeros -> -10.
+    mine = float(np.mean(profile["self"]))
+    wanted = float(np.mean(profile["want"][:5]))
+    hypergamy = float(np.clip(wanted - mine, -10.0, 10.0))
 
     he_curve = [float(np.mean(grid[:, j])) for j in range(LEVELS)]
     her_curve = [float(np.mean(grid[i, :])) for i in range(LEVELS)]
@@ -175,45 +178,48 @@ def partner_map(profile, gender, partner_gender=None):
 
 def verdict(result):
     """One plain sentence, so nobody has to read a grid to know where they stand."""
-    target = PLURAL[result.get("partner_gender", 1 - result["gender"])]
     chance = result["chance"]
     if chance >= 0.40:
         mood = "good" if chance >= 0.55 else "decent"
     else:
         mood = "low"
-    tail = (f"With a level {result['your_level']} (your own level) it is "
+    tail = (f"At your own package ({result['your_level']}) it is "
             f"{result['chance_your_level']:.0%}")
     if result["your_level"] != 5:
-        tail += f"; with a middle-of-the-road level 5 it is {result['chance_typical']:.0%}"
-    return (f"A {mood} chance: about {chance:.0%} of level {result['best_level']} {target} "
-            f"would say yes to you and you would say yes back. {tail}.")
+        tail += f"; at a middle package (5) it is {result['chance_typical']:.0%}"
+    return (f"A {mood} chance: the package that fits you best is number "
+            f"{result['best_level']} of 10, with about {chance:.0%} mutual yes. {tail}.")
 
 
 def describe(result):
     target = SINGULAR[result.get("partner_gender", 1 - result["gender"])]
     lines = [verdict(result), ""]
-    lines.append(f"best level        {result['best_level']} ({target}) with {result['chance']:.1%} mutual")
-    lines.append(f"your own level    {result['your_level']} with {result['chance_your_level']:.1%} mutual")
-    lines.append(f"middle level     5 with {result['chance_typical']:.1%} mutual")
-    lines.append(f"hypergamy         {result['hypergamy']:+.1f} of 10  "
-                 f"(negative = you value looks more than status, positive = the reverse)")
+    lines.append(f"best package      {result['best_level']} of 10 ({target}) with {result['chance']:.1%} mutual")
+    lines.append(f"your own package  {result['your_level']} with {result['chance_your_level']:.1%} mutual")
+    if result["your_level"] != 5:
+        lines.append(f"middle package    5 with {result['chance_typical']:.1%} mutual")
+    lines.append(f"reaching          {result['hypergamy']:+.1f} of 10  "
+                 f"(how far above your own ratings you aim: +10 = want perfect, rate yourself 0)")
     lines.append(f"attractiveness    {result['their_yes']:.0%} would say yes  "
                  f"(the share of dates in the study pool the market model expects to like you)")
-    lines.append(f"rank vs levels    {result['percentile']:.0f} of 100  "
+    lines.append(f"rank vs packages  {result['percentile']:.0f} of 100  "
                  f"(share of the ten packages the model puts below you)")
     if result.get("same_gender"):
         lines.append("")
         lines.append("  same-gender: the study only recorded opposite-gender dates, so this")
         lines.append("  is an extrapolation, not a measured number.")
     lines.append("")
-    lines.append("  level  mutual   band      what it means")
+    lines.append("  package  mutual   band      what it means")
     for band in result["bands"]:
         note = {"likely": "in range", "stretch": "needs something to change",
                 "hard": "out of reach on these stats"}[band["band"]]
-        lines.append(f"  {band['level']:>5}  {band['mutual']:>6.1%}   {band['band']:<8}  {note}")
+        lines.append(f"  {band['level']:>7}  {band['mutual']:>6.1%}   {band['band']:<8}  {note}")
     lines.append("")
-    lines.append("  bands compare each level to your best cell: 60% or more is likely,")
+    lines.append("  bands compare each package to your best cell: 60% or more is likely,")
     lines.append("  25% to 60% is stretch, below 25% is hard.")
+    lines.append("")
+    lines.append("  a package is a made-up bundle of looks, age and income, not a person:")
+    lines.append("  package 1 is the lowest rung, package 10 the highest.")
     return "\n".join(lines)
 
 
@@ -269,7 +275,7 @@ def arrows_svg(result):
     parts.append(f'<text x="16" y="382" font-size="10" fill="#8a8a8a">'
                  f'M1-M10 and W1-W10 are ten made-up packages, not ten real people.</text>')
     parts.append(f'<text x="16" y="402" font-size="10" fill="#8a8a8a">'
-                 f'blue: male level to the female level it matches with most often  ·  '
+                 f'blue: male package to the female package it matches with most often  ·  '
                  f'pink: the reverse  ·  black: you ({result["chance"]:.0%} mutual)</text>')
     parts.append('</svg>')
     return "".join(parts)
@@ -386,15 +392,15 @@ def map_svg(result):
                      f'fill="#111">your arrow</text>')
 
     parts.append(f'<text x="40" y="612" font-size="16" font-weight="bold" fill="#111">'
-                 f'your hypergamy {result["hypergamy"]:+.1f} / 10</text>')
+                 f'your reaching {result["hypergamy"]:+.1f} / 10</text>')
     parts.append(f'<text x="40" y="634" font-size="12" fill="#6b6b6b">'
                  f'attractiveness {result["their_yes"]:.0%} of dates would say yes  ·  '
-                 f'chance {result["chance"]:.1%} with level {result["best_level"]}</text>')
+                 f'chance {result["chance"]:.1%} with package {result["best_level"]}</text>')
     bands = "  ".join(f"{b['level']}:{b['band'][0]}" for b in result["bands"])
     parts.append(f'<text x="40" y="656" font-size="11" fill="#8a8a8a">'
-                 f'reach by level (l = likely, s = stretch, h = hard)  {bands}</text>')
+                 f'reach by package (l = likely, s = stretch, h = hard)  {bands}</text>')
     parts.append(f'<text x="40" y="676" font-size="10" fill="#a0a0a0">'
-                 f'levels are packages: looks, age and income move together  ·  '
+                 f'packages are made up, not people: looks, age and income move together  ·  '
                  f'both panels are the trained networks, nothing is hand-drawn</text>')
     parts.append('</svg>')
     return "\n".join(parts)
@@ -419,7 +425,7 @@ def average_svg(result):
              f'<text x="30" y="32" font-size="19" font-weight="bold" fill="#111">'
              f'AVERAGE ATTRACTION</text>',
              f'<text x="30" y="50" font-size="11" fill="#6b6b6b">'
-             f'mean mutual probability by level, men and women averaged separately</text>']
+             f'mean mutual probability by package, men and women averaged separately</text>']
 
     for g in range(5):
         v = ymax * g / 4
@@ -432,7 +438,7 @@ def average_svg(result):
         parts.append(f'<text x="{px(k):.1f}" y="{top + inner_h + 18}" font-size="9" '
                      f'text-anchor="middle" fill="#8a8a8a">{k}</text>')
     parts.append(f'<text x="{left + inner_w / 2}" y="{top + inner_h + 38}" font-size="10" '
-                 f'text-anchor="middle" fill="#6b6b6b">level (looks, age and income move together)</text>')
+                 f'text-anchor="middle" fill="#6b6b6b">package (looks, age and income move together)</text>')
 
     for curve, colour, label in ((result["he_curve"], "#1b9ad6", "he says yes"),
                                  (result["her_curve"], "#c2185b", "she says yes")):
@@ -471,8 +477,8 @@ def render(profile, gender, prefix="hypergamy_map"):
             ax.add_patch(Circle((int(np.argmax(result["matrix"][i])), i), 0.18,
                                 fill=False, ec="#111", lw=1.0))
         ax.set_title("HYPERGAMY MAP  ·  mutual probability (men x women)", fontsize=11)
-        ax.set_xlabel(f"your arrow: level {result['best_level']}  ·  chance "
-                      f"{result['chance']:.1%}  ·  hypergamy {result['hypergamy']:+.1f}/10",
+        ax.set_xlabel(f"your arrow: package {result['best_level']}  ·  chance "
+                      f"{result['chance']:.1%}  ·  reaching {result['hypergamy']:+.1f}/10",
                       fontsize=8)
         fig.tight_layout()
         fig.savefig(os.path.join(HERE, prefix + ".png"), facecolor="white")
