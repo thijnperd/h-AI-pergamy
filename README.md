@@ -149,6 +149,86 @@ trained only on 18–25 rows is **+46.0 pp**. Income is blank on half the rows a
 with training medians, and it is collinear with age, so treat this as a warning about
 the data, not a finding about young people. It stays in the output.
 
+## The GUI
+
+One local page for every model. It is plain HTML served by the Python standard
+library, so there is no toolkit to install and nothing is sent over the network.
+
+```mermaid
+flowchart TD
+    A["mode · age · self-ratings · wants"] --> B{"18 <= age <= 25<br/>or mode = 18-25 ?"}
+    B -- yes --> C["weights_deep_gender<br/>+ weights_young<br/>averaged"]
+    B -- no --> D["weights_deep_gender"]
+    C --> E["P(you say yes)"]
+    D --> E
+    A --> F["weights_market_gender<br/>their decision"]
+    F --> G["P(they say yes)"]
+    E --> H["P(mutual yes)"]
+    G --> H
+    H --> I["hypergamy · competitor rank"]
+```
+
+Which weights run, exactly:
+
+| your age | mode | models used |
+|---|---|---|
+| 18–25 | any | `weights_deep_{gender}.json` **+** `weights_young.json`, averaged |
+| 26+ or under 18 | regular / advanced / adult | `weights_deep_{gender}.json` only |
+| any | 18–25 | forces the young model, even outside the age range |
+| any | any | `weights_market_{gender}.json` for the other person's decision |
+
+The blend is an average of two probabilities, not a new network: both models read the
+same 16 inputs, so there is nothing to concatenate. There is no age-specific *market*
+model, so the market score always uses the gender model and the page says so.
+
+### Step by step
+
+1. Install Python 3.10 or newer.
+2. Install the two dependencies:
+   ```bash
+   python -m pip install -r requirements.txt
+   ```
+3. Start the app:
+   ```bash
+   python gui.py
+   ```
+4. Your browser opens `http://127.0.0.1:8000/`. If it does not, open it yourself.
+   Use `--port 9000` to change the port and `--no-browser` to stop it opening a tab.
+5. Choose a **mode**: `regular`, `advanced`, `adult`, or `18-25` to force the young
+   model. Choose **you are** man or woman.
+6. Fill in age, income and dating goal (1–6, 4 = serious relationship).
+7. Rate yourself on looks, sincerity, intelligence, fun and ambition (1–10).
+8. Say what you want in a partner (1–10) and how much each thing matters (%, any scale).
+9. In `advanced` and `adult`, extra fields appear: height, build, age gap, same race.
+   In `adult`, the kink / libido / size / experience fields appear too.
+10. Press **Compute**.
+11. Read the three numbers (both say yes, they say yes, you say yes), then the
+    adjustments with their `measured` / `population` / `research` label, the
+    hypergamy percentile, and the competitor rank. The bottom lists the exact model
+    files used and their cross-validated accuracy.
+12. Press Ctrl+C in the terminal to stop the server.
+
+The command line is still there (`python profile.py ...`) and prints the same numbers.
+
+## Space and requirements
+
+`requirements.txt` is two lines: `numpy` and `matplotlib`. The GUI itself needs
+nothing beyond the standard library (no tkinter, no Flask, no browser install).
+
+| what | approximate size |
+|---|---|
+| code, README, trained weights | under 0.2 MB |
+| datasets after `python data/build.py` | about 7 MB (raw 5.0, joined 1.4, 18–25 0.6) |
+| NumPy | about 41 MB |
+| Matplotlib and its small dependencies | about 50 MB |
+| a fresh virtualenv with both installed | roughly 130 MB |
+| the GUI | 0 MB extra — standard library only |
+
+The trained weights are **in the repository**, so a clone runs immediately. They are
+rounded to 7 decimals and stored without indentation (`tools/compact_weights.py`
+verifies that predictions move by less than 1e-5 before overwriting anything), which
+keeps all seven models at about 44 KB instead of about 120 KB.
+
 ## Datasets
 
 | dataset | rows | what it gives | what it cannot give |
@@ -168,8 +248,9 @@ the convenience copy has.
 ## Run it
 
 ```bash
-python -m pip install numpy matplotlib
-python data/build.py            # downloads + joins the datasets
+python -m pip install -r requirements.txt   # numpy + matplotlib
+python gui.py                   # the GUI, http://127.0.0.1:8000
+python data/build.py            # downloads + joins the datasets (needed for ranks)
 python train.py --snapshots     # the drawn 10x10 model + animation frames
 python train.py --features taste --layers 24,12 --epochs 400 --lr 0.05 \
                 --gender 1 --out weights_deep_men.json
@@ -203,10 +284,10 @@ python profile.py --demo        # three worked examples, one per mode
 python adult.py                 # the effect table, prevalence and sources
 ```
 
-The trained weights are generated, not committed: each training command above takes
-about a minute, and `profile.py` prints the exact command if a weights file is missing.
-Without the CSVs it still scores a profile from the weights and says which parts it
-skipped.
+The trained weights are committed, so nothing above has to be trained to use the app;
+the `train.py` lines are there to reproduce them. If a weights file is missing,
+`profile.py` prints the exact command that recreates it. Without the CSVs the app still
+scores a profile from the weights and says which parts it skipped.
 
 `main` carries the code and ignores the generated CSVs. A local `with-data` branch adds
 `data/*.csv` (1.4 MB and 619 KB) when you want them versioned.
