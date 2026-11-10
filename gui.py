@@ -26,6 +26,7 @@ import numpy as np
 
 import adult
 import hypergamy_map
+import likes
 import route
 from profile import DEFAULTS, competitors, have_data, stated_hypergamy
 
@@ -75,6 +76,17 @@ def compute(payload):
     partner = 0 if payload.get("partner_gender", "women") == "women" else 1
     profile["partner_gender"] = partner
     mapped = hypergamy_map.partner_map(profile, gender, partner)
+    liked = likes.who_likes_you(profile, gender, partner)
+    result["likes"] = {
+        "order": [int(k) + 1 for k in liked["order"]],
+        "their_yes": [round(float(v), 4) for v in liked["their_yes"]],
+        "your_yes": [round(float(v), 4) for v in liked["your_yes"]],
+        "mutual": [round(float(v), 4) for v in liked["mutual"]],
+        "best": int(liked["best"]),
+        "best_chance": round(float(liked["best_chance"]), 4),
+        "best_mutual": int(np.argmax(liked["mutual"])) + 1,
+        "best_mutual_chance": round(float(np.max(liked["mutual"])), 4),
+    }
     result["map"] = {
         "matrix": [[round(float(v), 4) for v in row] for row in mapped["matrix"]],
         "your_probs": [round(float(v), 4) for v in mapped["your_probs"]],
@@ -158,6 +170,9 @@ PAGE = r"""<!doctype html>
   .help { font-size:11px; color:#8a8a8a; line-height:1.3; margin-top:3px; }
   .verdict { background:#fdf0f5; border:1px solid #f3d4e1; border-radius:10px;
              padding:13px 15px; font-size:14.5px; margin-bottom:14px; }
+  .arrows { margin-top:12px; border:1px solid #f0f0f0; border-radius:8px; padding:4px 6px; }
+  .big small { display:block; font-size:10px; color:#8a8a8a; margin-top:2px;
+               text-transform:none; letter-spacing:0; }
   .hero { display:flex; gap:14px; align-items:center; background:#fdf0f5;
           border:1px solid #f3d4e1; border-radius:10px; padding:12px 16px;
           margin-bottom:12px; }
@@ -168,16 +183,18 @@ PAGE = r"""<!doctype html>
   .hero span { display:block; font-size:12px; color:var(--grey); margin-top:4px; }
   .league { border:1px solid #f0f0f0; border-radius:8px; padding:4px 6px;
             margin-bottom:12px; }
-  .arrows { margin-top:12px; border:1px solid #f0f0f0; border-radius:8px; padding:4px 6px; }
-  .big small { display:block; font-size:10px; color:#8a8a8a; margin-top:2px;
-               text-transform:none; letter-spacing:0; }
+  .likes { background:#f3f8f3; border:1px solid #d8e8d8; border-radius:10px;
+           padding:11px 15px; margin-bottom:14px; font-size:13.5px; }
+  .likes b { color:#2e7d32; font-size:14px; }
+  .likes span { display:block; color:var(--grey); margin-top:3px; }
+  .likes table { margin-top:7px; }
   details.explain { margin-top:16px; font-size:12.5px; color:#555; }
   details.explain summary { cursor:pointer; color:var(--pink); font-weight:600; }
   details.explain p { margin:8px 0 0; }
 </style></head><body>
 <header>
   <h1>HYPERGAMY</h1>
-  <p>hypergamousness &middot; attractiveness &middot; chance of a mutual yes &mdash;
+  <p>chance of a mutual yes &middot; hypergamy percentile &middot; competitor rank &mdash;
      all from saved weights, nothing leaves this machine</p>
 </header>
 <main>
@@ -352,6 +369,8 @@ function league_svg(r) {
   const y = (v) => 330 - (Math.max(0, Math.min(10, v)) / 10) * 270;
   const mine = Math.max(0, Math.min(10, r.p_them * 10));
   const goal = Math.max(0, Math.min(10, r.map.goal_rating));
+  const like = r.likes || null;
+  const likeY = like ? y(3 + 7 * (like.best - 1) / 9) : 0;
   const delta = goal - mine, above = delta > 0.25, below = delta < -0.25;
   const colour = above ? "#c2185b" : below ? "#1b9ad6" : "#111";
   const balls = (x) => Array.from({length: 10}, (_, i) => {
@@ -379,6 +398,11 @@ function league_svg(r) {
     <text x="150" y="${y(0) + 4}" font-size="10" text-anchor="end" fill="#8a8a8a">0</text>
     <text x="150" y="${y(5) - 18}" font-size="10" text-anchor="end" fill="#8a8a8a">attractiveness</text>
     ${balls(xYou)}${balls(xGoal)}
+    ${like ? `<circle cx="${xGoal}" cy="${likeY}" r="12" fill="none" stroke="#2e7d32"
+      stroke-width="2" stroke-dasharray="3 3"/>` : ""}
+    ${like ? `<text x="${xGoal + (youMan ? 20 : -20)}" y="${Math.max(26, likeY - 12)}"
+      font-size="10.5" font-weight="700" text-anchor="${youMan ? "start" : "end"}"
+      fill="#2e7d32">likes you ${(100 * like.best_chance).toFixed(0)}%</text>` : ""}
     <circle cx="${xYou}" cy="${y(mine)}" r="15" fill="none" stroke="#c2185b" stroke-width="2.5"/>
     <circle cx="${xYou}" cy="${y(mine)}" r="8.5" fill="#c2185b"/>
     <text x="${xYou + (youMan ? -22 : 22)}" y="${y(mine) + 4}" font-size="11" font-weight="700"
@@ -392,18 +416,30 @@ function league_svg(r) {
     <text x="330" y="356" font-size="10.5" text-anchor="middle" fill="#8a8a8a">
       left: men · right: women · balls 1-10 = attractiveness</text>
     <text x="330" y="372" font-size="10.5" text-anchor="middle" fill="#8a8a8a">
-      ringed red = you · pink arrow = over your league · blue = under</text>
+      ringed red = you · green dotted = likes you most · pink/blue = over/under</text>
   </svg></div>`;
 }
 
+function likes_panel(r) {
+  if (!r.likes) return "";
+  const i = r.likes.best - 1;
+  const rows = r.likes.order.slice(0, 5).map(k => {
+    const j = k - 1;
+    return `<tr><td>package ${k}</td>
+      <td>${pct(r.likes.their_yes[j])} say yes to you</td>
+      <td>${pct(r.likes.mutual[j])} mutual</td></tr>`;
+  }).join("");
+  return `<div class="likes">
+    <b>Who likes you most: package ${r.likes.best}</b>
+    <span>${pct(r.likes.their_yes[i])} of that package would say yes to you;
+      you would say yes ${pct(r.likes.your_yes[i])}; both ${pct(r.likes.mutual[i])}.</span>
+    <span>Best mutual: package ${r.likes.best_mutual}
+      (${pct(r.likes.best_mutual_chance)}).</span>
+    <table>${rows}</table>
+  </div>`;
+}
+
 function render(r) {
-  const hero = r.map ? `<div class="hero">
-    <div class="num">${r.map.hypergamy >= 0 ? "+" : ""}${r.map.hypergamy.toFixed(1)}</div>
-    <div><b>hypergamousness (reaching)</b><span>how far above your own ratings you aim,
-    on a -10 to +10 scale. +10 = you rate yourself 0 and want 10s; -10 = you are a 10 who
-    wants 0s. Read this first.</span></div>
-  </div>` : "";
-  const league = r.map ? league_svg(r) : "";
   const adj = r.adjustments.length ? `<h2 style="margin-top:16px">Adjustments</h2>
     <table>${r.adjustments.map(a =>
       `<tr><td>${a.label}</td><td>${a.pp > 0 ? "+" : ""}${a.pp.toFixed(1)} pp &nbsp;[${a.basis}]</td></tr>`).join("")}</table>` : "";
@@ -448,8 +484,16 @@ function render(r) {
     `<li>${m.path}${m.cv ? " &mdash; CV " + (100 * m.cv).toFixed(1) + "%" : ""}
      ${m.arch ? "&mdash; " + m.arch.join("&rarr;") : ""}</li>`).join("");
 
+  const hero = r.map ? `<div class="hero">
+    <div class="num">${r.map.hypergamy >= 0 ? "+" : ""}${r.map.hypergamy.toFixed(1)}</div>
+    <div><b>hypergamousness (reaching)</b><span>how far above your own ratings you aim,
+    on a -10 to +10 scale. +10 = you rate yourself 0 and want 10s; -10 = you are a 10 who
+    wants 0s. Read this first.</span></div>
+  </div>` : "";
+  const league = r.map ? league_svg(r) : "";
+
   document.getElementById("result").innerHTML = `
-    ${hero}${league}
+    ${hero}${league}${likes_panel(r)}
     ${r.map ? `<div class="verdict">${r.map.verdict}</div>` : ""}
     <div class="big">
       <div><span>both say yes</span><b>${pct(r.mutual)}</b><small>the number that matters</small></div>
@@ -463,21 +507,22 @@ function render(r) {
     <details class="explain"><summary>What these numbers mean</summary>
       <p><b>both say yes</b> — the chance that you and this kind of person both want a second
       date. <b>they say yes</b> comes from the market model, <b>you say yes</b> from the taste model.</p>
-      <p><b>hypergamousness (reaching)</b> — how far above your own ratings you aim, from -10 to +10.
-      Rate yourself 0 everywhere and want 10s and it is +10; be a 10 who wants 0s and it is
-      -10. It is not a judgement, just the gap between what you offer and what you look for.</p>
-      <p><b>the league graph</b> — men on the left, women on the right, attractiveness 0 at the
-      bottom to 10 at the top. The ringed red ball is you, the arrow runs from you to the
-      attractiveness you say you want, and the gap is printed next to it. Pink means above
-      your league, blue means below, black means level.</p>
+      <p><b>who likes you most</b> — the two dyad models score each package on how likely
+      it is to say yes to you, using its own ratings as well as its stated importance.
+      The green dotted ring is that package; the table shows the top five and the mutual
+      chance, which also depends on whether you would say yes.</p>
+      <p><b>bands</b> — every level is compared to your best cell: 60% or more is likely,
+      25% to 60% is stretch, below 25% is hard.</p>
       <p><b>packages</b> — the ten rows and columns are made-up bundles of looks, age and
       income, numbered 1 to 10. Package 10 is not "the perfect woman", it is just the top
       rung the model builds; every package has roughly 10% of the market.</p>
+      <p><b>hypergamousness (reaching)</b> — how far above your own ratings you aim, from -10 to +10.
+      Rate yourself 0 everywhere and want 10s and it is +10; be a 10 who wants 0s and it is
+      -10. It is not a judgement, just the gap between what you offer and what you look for.</p>
       <p><b>attractiveness</b> — how many dates in the study pool would say yes to you,
       according to the market model. It is about 64% accurate, so read it as a rough market
-      estimate, not as a score of your worth.</p>
-      <p><b>bands</b> — every package is compared to your best cell: 60% or more is likely,
-      25% to 60% is stretch, below 25% is hard.</p>
+      estimate, not as a score of your worth. "Rank vs levels" is different: it compares you
+      with the ten made-up packages, and it is not a rating of you either.</p>
     </details>
     <h2 style="margin-top:16px">Models used</h2>
     <p class="muted" style="margin:0 0 6px">${r.routing}</p>
@@ -522,25 +567,25 @@ class Handler(BaseHTTPRequestHandler):
         path = self.path.split("?")[0]
         if path in ("/", "/index.html") or path == "/app":
             self._send(200, PAGE, "text/html; charset=utf-8")
-        elif path == "/api/health":
+        elif self.path == "/api/health":
             self._send(200, json.dumps({"ok": True}))
         else:
             self._send(404, json.dumps({"error": "not found"}))
 
     def do_POST(self):
-        if not self.path.split("?")[0].startswith("/api/compute"):
-            self._send(404, json.dumps({"error": "not found"}))
+        if self.path.split("?")[0].startswith("/api/compute"):
+            try:
+                length = int(self.headers.get("Content-Length", "0"))
+                payload = json.loads(self.rfile.read(length) or b"{}")
+                self._send(200, json.dumps(compute(payload)))
+            except FileNotFoundError as exc:
+                self._send(400, json.dumps({
+                    "error": f"missing weights file: {exc}. Train it with the commands in the README."
+                }))
+            except Exception as exc:
+                self._send(400, json.dumps({"error": str(exc)}))
             return
-        try:
-            length = int(self.headers.get("Content-Length", "0"))
-            payload = json.loads(self.rfile.read(length) or b"{}")
-            self._send(200, json.dumps(compute(payload)))
-        except FileNotFoundError as exc:
-            self._send(400, json.dumps({
-                "error": f"missing weights file: {exc}. Train it with the commands in the README."
-            }))
-        except Exception as exc:
-            self._send(400, json.dumps({"error": str(exc)}))
+        self._send(404, json.dumps({"error": "not found"}))
 
     def log_message(self, *args):
         pass
