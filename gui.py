@@ -72,7 +72,9 @@ def compute(payload):
         "market": None,
     }
 
-    mapped = hypergamy_map.partner_map(profile, gender)
+    partner = 0 if payload.get("partner_gender", "women") == "women" else 1
+    profile["partner_gender"] = partner
+    mapped = hypergamy_map.partner_map(profile, gender, partner)
     result["map"] = {
         "matrix": [[round(float(v), 4) for v in row] for row in mapped["matrix"]],
         "your_probs": [round(float(v), 4) for v in mapped["your_probs"]],
@@ -86,6 +88,7 @@ def compute(payload):
         "hypergamy": mapped["hypergamy"],
         "verdict": hypergamy_map.verdict(mapped),
         "arrows": hypergamy_map.arrows_svg(mapped),
+        "same_gender": mapped["same_gender"],
     }
 
     if have_data():
@@ -177,6 +180,14 @@ PAGE = r"""<!doctype html>
         </select></div>
       <div><label for="gender">you are</label>
         <select id="gender"><option value="man">man</option><option value="woman">woman</option></select></div>
+    </div>
+    <div class="row">
+      <div><label for="partner_gender">interested in</label>
+        <select id="partner_gender"><option value="women" selected>women</option>
+          <option value="men">men</option></select></div>
+      <div><label>&nbsp;</label>
+        <div class="help">the study only has opposite-gender dates; picking your own gender
+          still works but is an extrapolation</div></div>
     </div>
     <div class="row3">
       <div><label for="age">age <b id="age_v">24</b></label>
@@ -288,6 +299,11 @@ grid("self", NAMES, DEF_SELF, 0, 10, 1, "");
 grid("want", WANT, DEF_WANT, 0, 10, 1, "");
 grid("importance", WANT, DEF_IMP, 0, 100, 5, "%");
 
+document.getElementById("gender").addEventListener("change", (e) => {
+  document.getElementById("partner_gender").value =
+    e.target.value === "man" ? "women" : "men";
+});
+
 document.getElementById("mode").addEventListener("change", (e) => {
   const m = e.target.value;
   document.getElementById("advanced").hidden = !(m === "advanced" || m === "adult");
@@ -300,6 +316,7 @@ function payload() {
   return {
     mode: document.getElementById("mode").value,
     gender: document.getElementById("gender").value,
+    partner_gender: document.getElementById("partner_gender").value,
     age: num("age"), income: num("income"), goal: num("goal"),
     self: [0,1,2,3,4].map(i => Number(document.getElementById("self_" + i).value)),
     want: [0,1,2,3,4,5].map(i => Number(document.getElementById("want_" + i).value)),
@@ -356,6 +373,9 @@ function render(r) {
       <div><span>you say yes</span><b>${pct(r.p_you)}</b><small>your side, taste model</small></div>
     </div>
     ${adj}${hyper}${market}${map}
+    ${r.map && r.map.same_gender ? `<p class="muted" style="margin-top:12px">Same-gender
+      pairing: the study only recorded opposite-gender dates, so read these numbers as an
+      extrapolation, not a measured result.</p>` : ""}
     <details class="explain"><summary>What these numbers mean</summary>
       <p><b>both say yes</b> — the chance that you and this kind of person both want a second
       date. <b>they say yes</b> comes from the market model, <b>you say yes</b> from the taste model.</p>
