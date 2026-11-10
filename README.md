@@ -137,7 +137,8 @@ flowchart LR
   keeps the quarter whose stated wants are closest to yours, and reports where you sit.
   "Top 25% of 1,156 competitors" is a measured rank, not a compliment.
 
-![hypergamy scale](hypergamy_scale.png)
+The chart is a build artifact, not a committed file: `python visualize_scale.py` writes
+`hypergamy_scale.png` locally, so the repository stays free of binary history.
 
 ### What the 18–25 check actually found
 
