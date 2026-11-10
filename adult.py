@@ -26,9 +26,16 @@ What the literature actually says, and how it is used here:
   likely to choose a man 25 cm taller; men a woman 7 cm shorter; actual matches peaked
   at a 19 cm gap. The male-taller norm is real but modest in realised couples
   (PLOS ONE 2013: assortative r = .18, "not too tall" penalty past ~25 cm).
-* **Kink.** Reviews put BDSM fantasy at 40-70% of the general population and any
-  practice around 20% (Holvoet 2017: 46.8% ever tried, 7.6% identify). Compatibility
-  therefore matters more than having or not having a kink.
+* **Kink.** Interest is common and practice is not rare: 68.8% of a nationally
+  representative Belgian sample reported at least one BDSM fantasy or practice, 46.8%
+  had actually done one, 26% called themselves interested and 7.6% identified as
+  practitioners (Holvoet 2017, n=1,027). A Norwegian population study found over one
+  in three endorsing a BDSM interest or behaviour (n=4,148), a Finnish sample 38%
+  interested (n=8,137), and Joyal & Carpentier 45.6% with at least one paraphilic
+  interest. The same Norwegian study found BDSM *behaviour* associated with higher
+  sexual satisfaction while mere unfulfilled interest was associated with lower
+  closeness -- so the effect here is compatibility, not participation, and it is
+  deliberately small.
 * **Desire discrepancy.** Common and one of the more reliable predictors of lower
   sexual and relationship satisfaction (Willoughby 2013, n=1,054 couples).
 
@@ -71,7 +78,9 @@ SOURCES = {
     "breast_size": "Swami & Tovee 2013, Arch Sex Behav 42:1199; US census breast study 2022; "
                    "Breast Size Satisfaction Survey 2020 (n=18,541)",
     "height": "Stulp et al. 2013, Anim Behav (5,782 speed-daters); Stulp et al. 2013, PLOS ONE",
-    "bdsm": "Holvoet et al. 2017; Joyal & Carpentier 2017; scoping review 2019 (40-70% fantasy, ~20% practice)",
+    "bdsm": "Holvoet et al. 2017 (J Sex Med 14:1152, n=1,027); Joyal & Carpentier 2017 (n=1,040); "
+            "Baranowski et al. 2021 (Norway, n=4,148); Finnish prevalence 2023 (n=8,137); "
+            "scoping review 2019 (J Sex Res)",
     "desire": "Willoughby et al. 2013 (n=1,054 married couples)",
 }
 
@@ -80,9 +89,11 @@ PREVALENCE = {
     "satisfied with partner size": "85% of women (Lever 2006)",
     "wants larger breasts": "47.5% of women; 29.3% satisfied (BSSS 2020)",
     "men preferring medium breasts": "32.7%; large 24.4%; very large 19.1% (Swami 2013)",
-    "BDSM fantasy": "40-70%",
-    "BDSM practice, ever": "~20% (46.8% at least once in one Belgian sample)",
-    "identifies as kink practitioner": "7.6%",
+    "BDSM fantasy or practice, any": "68.8% (Holvoet 2017); 38% interested in Finland (2023)",
+    "BDSM practice, ever": "46.8% (Holvoet 2017); over 1 in 3 in Norway (2021)",
+    "interested in BDSM": "26% (Holvoet 2017)",
+    "identifies as kink practitioner": "7.6% (Holvoet 2017)",
+    "BDSM and satisfaction": "behaviour associated with higher sexual satisfaction; unfulfilled interest with lower closeness (Norway 2021)",
     "desire discrepancy in couples": "common; predicts lower satisfaction (Willoughby 2013)",
 }
 
@@ -174,13 +185,15 @@ def adjustments(profile, gender):
                      2.0 if profile.get("orientation_match", True) else -6.0, "research"))
 
         kink = float(profile.get("kink_match", 3.0))
-        kink_delta = -1.0 + 1.1 * kink
+        # Compatibility, not presence: the literature says interest is common and
+        # practice is linked to satisfaction, so mismatch costs less than fit gains.
+        kink_delta = -0.6 + 0.72 * kink
         d_them += kink_delta
         d_you += 0.5 * kink_delta
         rows.append((f"kink compatibility {kink:.0f}/5", kink_delta, "research"))
 
         libido = float(profile.get("libido_match", 3.0))
-        libido_delta = -1.0 + 0.8 * libido
+        libido_delta = -0.8 + 0.7 * libido
         d_you += libido_delta
         rows.append((f"libido compatibility {libido:.0f}/5", libido_delta, "research"))
 
