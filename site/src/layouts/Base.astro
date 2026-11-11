@@ -53,6 +53,35 @@ const ogImage = new URL(`${base}/og-map.png`, Astro.site);
           }, 1800);
         });
       }
+      const navLinks = [...document.querySelectorAll<HTMLAnchorElement>('.nav a[href^="#"]')];
+      const navSections = navLinks
+        .map((link) => document.querySelector<HTMLElement>(link.getAttribute('href') ?? ''))
+        .filter((section): section is HTMLElement => Boolean(section));
+      if (navSections.length && 'IntersectionObserver' in window) {
+        const visible = new Map<string, number>();
+        const setActive = (id: string) => {
+          navLinks.forEach((link) => {
+            if (link.getAttribute('href') === `#${id}`) {
+              link.setAttribute('aria-current', 'location');
+            } else {
+              link.removeAttribute('aria-current');
+            }
+          });
+        };
+        const observer = new IntersectionObserver(
+          (entries) => {
+            entries.forEach((entry) => {
+              if (entry.isIntersecting) visible.set(entry.target.id, entry.intersectionRatio);
+              else visible.delete(entry.target.id);
+            });
+            const best = [...visible.entries()].sort((a, b) => b[1] - a[1])[0];
+            if (best) setActive(best[0]);
+          },
+          { rootMargin: '-18% 0px -68% 0px', threshold: [0, 0.1, 0.5] }
+        );
+        navSections.forEach((section) => observer.observe(section));
+      }
+
       const year = document.getElementById('year');
       if (year) year.textContent = String(new Date().getFullYear());
     </script>

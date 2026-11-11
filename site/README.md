@@ -34,7 +34,7 @@ as its source; the workflow runs on pushes to `main` that touch `site/`.
    root `AGENTS.md`.
 2. The partner section is measured ACS context, never a lifetime forecast.
 3. Do not add an invented screenshot, quote, user count, or logo.
-4. The hero map is generated from `hypergamy_map.matrix()` by
+4. The hero map is generated from `hypergamy_map.matrices()` by
    `python tools/export_site_map.py`; do not hand-edit `src/data/map.json`.
 
 ## Icons
