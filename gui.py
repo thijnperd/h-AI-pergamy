@@ -295,7 +295,9 @@ PAGE = r"""<!doctype html>
   .chip.trained { background:#e8f3fb; color:#1b5e8a; }
   .chip.measured { background:#eaf6ed; color:#2e6b4f; }
   .chip.research { background:#fdf1dc; color:#8a5a00; }
-  .result-panel { align-self:start; }
+  .result-panel { align-self:start; position:sticky; top:16px;
+                   max-height:calc(100vh - 32px); overflow-y:auto;
+                   overscroll-behavior:contain; scrollbar-width:thin; }
   .result-panel .section-head { margin-bottom:12px; }
   #result { min-height:180px; }
   .empty { border:0; border-top:1px solid var(--rule); border-radius:0; padding:18px 2px;
@@ -310,6 +312,7 @@ PAGE = r"""<!doctype html>
     .site-header { padding:16px 14px 6px; align-items:flex-start; }
     .header-meta { display:none; }
     .panel { padding:18px 16px; border-radius:14px; }
+    .result-panel { position:static; max-height:none; overflow:visible; }
     .row3, .grid6 { grid-template-columns:1fr 1fr; }
   }
   @media (max-width: 560px) {
