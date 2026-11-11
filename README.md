@@ -7,9 +7,10 @@ far above your own ratings you aim (reaching)**, and **which partners are in rea
 Every number is **trained**, **measured** from a named dataset, or explicitly labelled
 a **research prior**. No decorative arrows and no invented statistics.
 
-**v1.3.0** adds a tested, responsive GUI, separate anatomy fields for the person and
-the partner, and a 15-test regression suite. The date model and its CV numbers are
-unchanged from v1.2.1.
+**v1.4.1** makes the education intake optional instead of assuming a degree; a blank
+field now falls back to the overall ACS table. **v1.4.0** added the measured partner
+panel, the NHANES height context, the reach bands, and a 23-test regression suite. The
+date model and its CV numbers are unchanged from v1.2.1.
 
 ![the hypergamy map](hypergamy_map.svg)
 

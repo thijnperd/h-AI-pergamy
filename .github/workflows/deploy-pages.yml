@@ -2,7 +2,7 @@ name: Deploy promo site to Pages
 
 on:
   push:
-    branches: [release/v1.4.0]
+    branches: [main]
     paths:
       - "site/**"
       - ".github/workflows/deploy-pages.yml"

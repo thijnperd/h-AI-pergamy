@@ -2,6 +2,8 @@
 import Base from '../layouts/Base.astro';
 import Header from '../components/Header.astro';
 import Footer from '../components/Footer.astro';
+import MapGrid from '../components/MapGrid.astro';
+import mapData from '../data/map.json';
 import {
   Heart,
   Target,
@@ -29,19 +31,6 @@ const models = [
   { name: 'market, women', inputs: 8, cv: '63.9% ± 2.0', base: '55.8%', lift: '+8.1' },
   { name: 'dyad, men', inputs: 20, cv: '80.9% ± 1.1', base: '50.1%', lift: '+30.8' },
   { name: 'map / base', inputs: 10, cv: '77.4% ± 1.2', base: '57.0%', lift: '+20.4' },
-];
-
-const packages = [
-  { n: 1, looks: '3.0 / 10', age: 24, income: '$21.0k' },
-  { n: 2, looks: '3.8 / 10', age: 25, income: '$25.5k' },
-  { n: 3, looks: '4.6 / 10', age: 26, income: '$30.0k' },
-  { n: 4, looks: '5.3 / 10', age: 27, income: '$34.5k' },
-  { n: 5, looks: '6.1 / 10', age: 28, income: '$39.0k' },
-  { n: 6, looks: '6.9 / 10', age: 30, income: '$43.5k' },
-  { n: 7, looks: '7.7 / 10', age: 31, income: '$48.0k' },
-  { n: 8, looks: '8.4 / 10', age: 32, income: '$52.5k' },
-  { n: 9, looks: '9.2 / 10', age: 33, income: '$57.0k' },
-  { n: 10, looks: '10.0 / 10', age: 34, income: '$61.5k' },
 ];
 
 const repo = 'https://github.com/thijnperd/h-AI-pergamy';
@@ -96,20 +85,7 @@ const repo = 'https://github.com/thijnperd/h-AI-pergamy';
       </div>
 
       <div class="hero-visual">
-        <figure class="frame">
-          <img
-            src={`${base}/hypergamy_map.svg`}
-            width="900"
-            height="620"
-            alt="A 10 by 10 heatmap of mutual-match probabilities. Rows are men, columns are women, with a bright diagonal where looks, age and income climb together."
-            loading="eager"
-            decoding="async"
-          />
-          <figcaption class="frame-cap">
-            <span><b>The hypergamy map</b> — 100 real forward passes, not a drawing.</span>
-            <span>P(he says yes) × P(she says yes)</span>
-          </figcaption>
-        </figure>
+        <MapGrid />
       </div>
     </section>
 
@@ -126,32 +102,28 @@ const repo = 'https://github.com/thijnperd/h-AI-pergamy';
 
       <div class="grid grid-4">
         <article class="card">
-          <span class="icon-wrap"><Heart size={20} stroke-width={1.9} aria-hidden="true" /></span>
-          <h3>Chance of a mutual yes</h3>
+          <h3><span class="icon-wrap"><Heart size={18} stroke-width={1.9} aria-hidden="true" /></span>Chance of a mutual yes</h3>
           <p>
             Your yes and their yes are predicted separately, then multiplied. The market side is
             the weaker model, and the UI prints both directions instead of hiding it.
           </p>
         </article>
         <article class="card">
-          <span class="icon-wrap"><Target size={20} stroke-width={1.9} aria-hidden="true" /></span>
-          <h3>The package you reach best</h3>
+          <h3><span class="icon-wrap"><Target size={18} stroke-width={1.9} aria-hidden="true" /></span>The package you reach best</h3>
           <p>
             Your own arrow on the map plus a reaching score from −10 to +10: the gap between what
             you offer and what you look for.
           </p>
         </article>
         <article class="card">
-          <span class="icon-wrap"><Trophy size={20} stroke-width={1.9} aria-hidden="true" /></span>
-          <h3>Competitor rank</h3>
+          <h3><span class="icon-wrap"><Trophy size={18} stroke-width={1.9} aria-hidden="true" /></span>Competitor rank</h3>
           <p>
             Where your age, income, goal and self-ratings sit in the study pool, compared against
             the date data rather than an opinion about your worth.
           </p>
         </article>
         <article class="card">
-          <span class="icon-wrap"><Map size={20} stroke-width={1.9} aria-hidden="true" /></span>
-          <h3>Reach bands</h3>
+          <h3><span class="icon-wrap"><Map size={18} stroke-width={1.9} aria-hidden="true" /></span>Reach bands</h3>
           <p>
             Likely at 60% or more of your best cell, stretch at 25–60%, hard below 25%. A model
             output, not a promise about any real person.
@@ -182,7 +154,6 @@ const repo = 'https://github.com/thijnperd/h-AI-pergamy';
     <section class="section wrap" id="map" aria-labelledby="map-title">
       <div class="split">
         <div class="prose">
-          <p class="kicker">The picture</p>
           <h2 id="map-title" style="font-size: clamp(1.85rem, 3.4vw, 2.6rem); font-weight: 600;">The map is the product.</h2>
           <p style="margin-top: 14px;">
             Rows are men, columns are women, and every one of the 100 cells is a real forward pass:
@@ -203,12 +174,12 @@ const repo = 'https://github.com/thijnperd/h-AI-pergamy';
                   <tr><th>package</th><th>looks</th><th>age</th><th>income</th></tr>
                 </thead>
                 <tbody>
-                  {packages.map((p) => (
+                  {mapData.packages.map((p) => (
                     <tr>
-                      <td class="num">{p.n}</td>
-                      <td class="num">{p.looks}</td>
+                      <td class="num">{p.level}</td>
+                      <td class="num">{p.looks.toFixed(1)} / 10</td>
                       <td class="num">{p.age}</td>
-                      <td class="num">{p.income}</td>
+                      <td class="num">${p.income.toFixed(1)}k</td>
                     </tr>
                   ))}
                 </tbody>
@@ -356,8 +327,9 @@ const repo = 'https://github.com/thijnperd/h-AI-pergamy';
             claimed. HCMST is the right panel for that question; it is cited, not trained.
           </p>
           <div class="quote">
-            The typical partner's self-ratings sit at 7.4/10 on the package ladder — measured from
-            real participants, not modelled.
+            The 7.4/10 is the median self-rating of real participants of that gender, mapped
+            onto the package ladder — measured from the speed dates, not modelled from the ACS
+            couples.
           </div>
         </div>
       </div>

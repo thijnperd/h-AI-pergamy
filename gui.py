@@ -197,13 +197,13 @@ PAGE = r"""<!doctype html>
   .muted { color:var(--grey); font-size:12.5px; }
   .err { color:#b00020; font-size:13px; }
   .maprow { display:grid; grid-template-columns:repeat(10,1fr); gap:2px; margin-bottom:2px; }
-  .mapcell { font-size:9px; text-align:center; color:#555; padding:3px 0; border-radius:2px; }
+  .mapcell { font-size:11px; text-align:center; color:#555; padding:4px 0; border-radius:2px; }
   .mapcell.mine { outline:2px solid #111; font-weight:700; color:#111; }
-  .help { font-size:11px; color:#8a8a8a; line-height:1.3; margin-top:3px; }
+  .help { font-size:12.5px; color:#6b5f66; line-height:1.45; margin-top:3px; }
   .verdict { background:#fdf0f5; border:1px solid #f3d4e1; border-radius:10px;
              padding:13px 15px; font-size:14.5px; margin-bottom:14px; }
   .arrows { margin-top:12px; border:1px solid #f0f0f0; border-radius:8px; padding:4px 6px; }
-  .big small { display:block; font-size:10px; color:#8a8a8a; margin-top:2px;
+  .big small { display:block; font-size:11px; color:#6b5f66; margin-top:2px;
                text-transform:none; letter-spacing:0; }
   .hero { display:flex; gap:14px; align-items:center; background:#fdf0f5;
           border:1px solid #f3d4e1; border-radius:10px; padding:12px 16px;
@@ -235,7 +235,7 @@ PAGE = r"""<!doctype html>
   .person .facts { display:grid; grid-template-columns:repeat(4,1fr); gap:6px 10px;
                    margin:8px 0; }
   .person .facts div { border-top:1px solid #e3edf5; padding-top:4px; }
-  .person .facts span { display:block; font-size:10px; color:var(--grey);
+  .person .facts span { display:block; font-size:11px; color:var(--grey);
                         text-transform:uppercase; letter-spacing:.05em; }
   .person .facts b { font-size:14px; }
   .person .rates { color:var(--grey); font-size:12px; }
@@ -281,18 +281,16 @@ PAGE = r"""<!doctype html>
   input[type=range] { min-height:26px; cursor:pointer; }
   input:focus-visible, select:focus-visible, button:focus-visible, summary:focus-visible {
     outline:3px solid #246b8e55; outline-offset:2px; }
-  .control { background:var(--soft); border:1px solid #eee3dc; border-radius:10px;
-              padding:8px 9px 6px; min-width:0; }
-  .grid6 .control { padding:8px 9px 5px; }
+  .control { min-width:0; }
   .grid6 .caption { text-align:left; font-size:11px; margin:0 0 1px; white-space:nowrap;
                     overflow:hidden; text-overflow:ellipsis; }
   .val { text-align:right; color:var(--pink); font-size:11.5px; margin-top:-1px; }
-  .range-limits { display:flex; justify-content:space-between; color:#a3969d;
-                  font-size:9px; line-height:1; margin-top:2px; }
+  .range-limits { display:flex; justify-content:space-between; color:#6b5f66;
+                  font-size:11.5px; line-height:1.2; margin-top:3px; }
   .big div { background:var(--soft); }
   .big div:first-child { border-color:#e9c9d4; background:#fff5f8; }
   .big div:first-child b { color:var(--pink); }
-  .chip { display:inline-block; padding:1px 6px; border-radius:999px; font-size:10px;
+  .chip { display:inline-block; padding:2px 6px; border-radius:999px; font-size:11px;
           font-weight:700; letter-spacing:.02em; vertical-align:1px; }
   .chip.trained { background:#e8f3fb; color:#1b5e8a; }
   .chip.measured { background:#eaf6ed; color:#2e6b4f; }
@@ -300,8 +298,8 @@ PAGE = r"""<!doctype html>
   .result-panel { align-self:start; }
   .result-panel .section-head { margin-bottom:12px; }
   #result { min-height:180px; }
-  .empty { border:1px dashed #d9cec7; border-radius:12px; padding:24px 18px;
-            color:var(--grey); background:#fffaf6; font-size:13px; }
+  .empty { border:0; border-top:1px solid var(--rule); border-radius:0; padding:18px 2px;
+            color:var(--grey); background:none; font-size:13.5px; }
   .loading { display:flex; align-items:center; gap:9px; padding:20px 4px; color:var(--grey); }
   .spinner { width:17px; height:17px; border:2px solid #eadbe2; border-top-color:var(--pink);
              border-radius:50%; animation:spin .8s linear infinite; }
