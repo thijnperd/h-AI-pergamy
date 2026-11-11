@@ -161,11 +161,16 @@ The GUI shows the evidence rather than silently turning it into a multiplier:
 
 ```bash
 python -m pip install -r requirements.txt
-python gui.py
+python data/build.py # recommended once: full couple context, calibration and ranking
+python gui.py # native desktop window
 ```
 
-Open `http://127.0.0.1:8000/`, fill the form, press **Compute**. The profile is created
-in the GUI, not on the command line. Modes: **regular** (self, want and importance),
+A native desktop window opens; fill the form, press **Compute**. No browser and no
+local server are used by default. The profile is created in the GUI, not on the
+command line. Use `python gui.py --serve` only if you want the legacy local
+browser UI at `http://127.0.0.1:8000/`. On most Windows/macOS Python installs Tk is
+included; on Debian/Ubuntu install the `python3-tk` system package if the desktop
+window cannot start. Modes: **regular** (self, want and importance),
 **advanced** (+ height, build, age gap, ethnicity), **adult** (+ kink, libido, and the
 anatomy fields), **18-25** (force the young model). Pick who you are and who you are
 interested in; same-gender pairings are flagged as an extrapolation because the study
@@ -203,10 +208,11 @@ real, redistributable profile-to-match dataset was found for this release.
 python -m unittest discover -s tests -v
 ```
 
-The current suite has **23 tests**: the reference profile, an average man, an average
+The current suite has **26 tests**: the reference profile, an average man, an average
 woman, eight edge cases (age 18/80, income $0/$10M, height 140/210 cm, all 0s and
 all 10s, same-gender pairs), 20 seeded random profiles, JSON/NaN checks, 10x10 map
-invariants, the committed CV metadata, the anatomy directions, and the HTML hooks.
+invariants, the committed CV metadata, the anatomy directions, the HTML hooks, and
+three native-GUI payload/format checks.
 
 Reference profile (man, 18, $4,500, `[6,8,7,7,3]` self, `[6,7,6,6,5,5]` want):
 **58.72%** they say yes, **1.63%** you say yes, **0.96%** both; best package 7 at

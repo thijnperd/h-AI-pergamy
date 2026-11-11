@@ -16,6 +16,7 @@ import random
 import unittest
 
 import gui
+import local_gui
 from profile import DEFAULTS
 
 HERE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -254,6 +255,49 @@ class AnatomyTest(unittest.TestCase):
         large = run({**AVERAGE_WOMAN, "size_cm": 18})
         self.assertAlmostEqual(large["p_them"], small["p_them"], places=9)
         self.assertAlmostEqual(large["p_you"], small["p_you"], places=9)
+
+
+class LocalGuiTest(unittest.TestCase):
+    def test_desktop_payload_uses_compute_contract(self):
+        form = local_gui.default_form()
+        payload = local_gui.build_payload(form)
+        self.assertEqual(payload["mode"], "regular")
+        self.assertEqual(payload["gender"], "man")
+        self.assertEqual(len(payload["self"]), 5)
+        self.assertEqual(len(payload["want"]), 6)
+        self.assertEqual(len(payload["importance"]), 6)
+        self.assertIn(payload["body_type"], ("thin", "athletic", "average", "curvy", "full figured", "a little extra"))
+
+    def test_desktop_payload_clamps_and_rejects_bad_numbers(self):
+        form = local_gui.default_form()
+        form.update({"age": "200", "income": "-5", "goal": "99"})
+        payload = local_gui.build_payload(form)
+        self.assertEqual(payload["age"], 80.0)
+        self.assertEqual(payload["income"], 0.0)
+        self.assertEqual(payload["goal"], 6.0)
+        with self.assertRaises(ValueError):
+            local_gui.build_payload({**form, "age": "not a number"})
+
+    def test_desktop_summary_reports_basis_without_a_display(self):
+        result = {
+            "mutual": 0.1234,
+            "p_them": 0.606,
+            "p_you": 0.066,
+            "routing": "unit test routing",
+            "warnings": ["unit test warning"],
+            "hypergamy": {"percentile": 42.0},
+            "market": {"score": 61.0, "rank": 70.0, "n": 100},
+            "likes": {"best": 7, "best_chance": 0.2858, "best_mutual": 7, "best_mutual_chance": 0.12},
+            "map": {"best_level": 7, "chance": 0.2858, "your_level": 5, "chance_your_level": 0.1, "hypergamy": 1.2, "verdict": "unit verdict", "bands": [{"level": 7, "mutual": 0.2858, "band": "likely"}]},
+            "person": {"gender": "woman", "age": 27.0, "package": 7, "p_they": 0.3, "p_you": 0.4, "mutual": 0.12},
+            "partner": {"available": True, "typical": {"age": 28.0, "income": 45000}},
+            "adjustments": [{"label": "same race", "pp": 4.61, "basis": "measured"}],
+            "taste_models": [{"path": "weights_deep_men.json", "cv": 0.8112}],
+            "market_models": [{"path": "weights_market_men.json", "cv": 0.6607}],
+        }
+        text = local_gui.format_result(result)
+        for needle in ("12.3%", "unit test routing", "unit test warning", "measured", "weights_deep_men.json", "Package 7"):
+            self.assertIn(needle, text)
 
 
 class AccuracyMetadataTest(unittest.TestCase):

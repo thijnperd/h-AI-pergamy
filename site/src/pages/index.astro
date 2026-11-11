@@ -342,7 +342,7 @@ const repo = 'https://github.com/thijnperd/h-AI-pergamy';
         <p class="kicker">Run it</p>
         <h2 id="quickstart-title">On your machine, in one terminal.</h2>
         <p>
-          The calculator is a stdlib Python server on <code>127.0.0.1</code>. No account, no API
+          The calculator is a stdlib Python desktop app. No browser, no account, no API
           key, no upload. The first data build downloads the public speed-dating files and joins
           them locally.
         </p>
@@ -363,9 +363,12 @@ const repo = 'https://github.com/thijnperd/h-AI-pergamy';
 <span class="cmd">cd</span> h-AI-pergamy
 <span class="cmd">python -m pip install</span> -r requirements.txt
 
-<span class="comment"># build the joined dataset, then open the calculator</span>
+<span class="comment"># build the joined dataset, then open the desktop calculator</span>
 <span class="cmd">python data/build.py</span>
 <span class="cmd">python gui.py</span>
+
+<span class="comment"># legacy browser UI only; the default above needs no browser</span>
+<span class="cmd">python gui.py --serve</span>
 
 <span class="comment"># optional: regenerate the map as svg + png</span>
 <span class="cmd">python hypergamy_map.py</span></code></pre>
@@ -375,7 +378,7 @@ const repo = 'https://github.com/thijnperd/h-AI-pergamy';
           <div class="card">
             <h3><Lock size={15} stroke-width={1.9} aria-hidden="true" /> Local by construction</h3>
             <p>
-              The server binds <code>127.0.0.1</code> and there is no analytics script. Your
+              The desktop app does all maths on your machine and there is no analytics script. Your
               profile never leaves the machine.
             </p>
           </div>
@@ -390,7 +393,7 @@ const repo = 'https://github.com/thijnperd/h-AI-pergamy';
           </div>
           <div class="card">
             <h3><Database size={15} stroke-width={1.9} aria-hidden="true" /> Requirements</h3>
-            <p>Python with pip and NumPy. No web framework, no database, no build step.</p>
+            <p>Python with pip, NumPy and Tk. Tk ships with most Windows/macOS Python installs; on Debian/Ubuntu add <code>python3-tk</code>. No web framework, no database, no build step.</p>
           </div>
         </div>
       </div>
@@ -400,13 +403,13 @@ const repo = 'https://github.com/thijnperd/h-AI-pergamy';
           src={`${base}/gui-result.png`}
           width="1168"
           height="1674"
-          alt="The calculator result panel at phone width: 34.0% mutual yes, 62.0% they say yes, 54.8% you say yes, reaching +1.0, and the likes ranking."
+          alt="The legacy browser result panel at phone width: 34.0% mutual yes, 62.0% they say yes, 54.8% you say yes, reaching +1.0, and the likes ranking."
           loading="lazy"
           decoding="async"
         />
         <figcaption>
-          A real result from the local calculator (demo profile, phone-width layout). The form, the
-          map and the partner panel all run on your machine.
+          A real result from the legacy browser calculator (demo profile, phone-width layout). The
+          default desktop app shows the same engine in Summary/Map/Details tabs and also runs on your machine.
         </figcaption>
       </figure>
     </section>

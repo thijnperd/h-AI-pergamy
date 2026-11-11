@@ -21,6 +21,7 @@ MANIFEST = [
     "requirements.txt",
     # the app
     "gui.py",
+    "local_gui.py",
     "hypergamy_map.py",
     "profile.py",
     "route.py",

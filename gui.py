@@ -1,17 +1,18 @@
-"""A local GUI for the whole project -- one page, every model.
+"""A local GUI for the whole project -- one desktop window, every model.
 
-No toolkit to install: the interface is plain HTML served by Python's standard
-library, and the maths stays on your machine. Run it, the browser opens, fill in
-the form, press Compute. Nothing is sent anywhere.
+No toolkit to install: the default interface is a standard-library Tk window
+and the maths stays on your machine. Run it, fill in the form, press Compute.
+Nothing is sent anywhere. The old browser page is still available behind
+`--serve` for compatibility, but it is no longer the default.
 
 The app routes the profile to the right weights (see route.py):
 
   age 18-25, or the 18-25 mode -> the gender model and the 18-25 model, averaged
   any other age               -> the gender model only
 
-  python gui.py                 # http://127.0.0.1:8000
-  python gui.py --port 9000
-  python gui.py --no-browser
+  python gui.py                 # native desktop window
+  python gui.py --serve         # legacy local browser UI
+  python gui.py --serve --port 9000
 """
 
 import argparse
@@ -955,11 +956,18 @@ class Handler(BaseHTTPRequestHandler):
 
 def main():
     parser = argparse.ArgumentParser(description="local GUI for the HYPERGAMY models")
+    parser.add_argument("--serve", action="store_true",
+                        help="legacy browser UI instead of the desktop window")
     parser.add_argument("--host", default="127.0.0.1",
-                        help="interface to bind (use 0.0.0.0 to expose it)")
+                        help="serve interface to bind (use 0.0.0.0 to expose it)")
     parser.add_argument("--port", type=int, default=8000)
     parser.add_argument("--no-browser", action="store_true")
     args = parser.parse_args()
+
+    if not args.serve:
+        from local_gui import main as desktop_main
+        desktop_main([])
+        return
 
     server = ThreadingHTTPServer((args.host, args.port), Handler)
     url = f"http://{'127.0.0.1' if args.host in ('0.0.0.0', '::') else args.host}:{args.port}/"

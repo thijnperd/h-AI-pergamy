@@ -1,7 +1,7 @@
 # AGENTS.md
 
 Project: **HYPERGAMY** — NumPy neural networks trained on real speed dates, plus a local
-web GUI and a profile tool that estimate the chance of a mutual yes, a hypergamy score,
+native GUI and a profile tool that estimate the chance of a mutual yes, a hypergamy score,
 the competitor rank, and the range of partners you can plausibly reach.
 
 Rules, in order:
@@ -34,7 +34,7 @@ python train.py --features dyad --layers 16,8 --gender 1 --out weights_likes_men
 python train.py --features dyad --layers 16,8 --gender 0 --out weights_likes_women.json
 python train.py --features taste --layers 24,12 --min-age 18 --max-age 25 --out weights_young.json
 python generate.py --train           # person-generator weights
-python gui.py                        # the GUI, http://127.0.0.1:8000
+python gui.py                        # native desktop GUI; --serve keeps the legacy browser UI
 python hypergamy_map.py              # the map: svg + png + the reach bands
 python profile.py --demo
 python partner.py --demo
@@ -58,7 +58,8 @@ hypergamy_map.py       the 10x10 map, your arrow, the reach bands, svg (and png)
 visualize.py           drawn network -> hypergamy_network.png (legacy figure)
 visualize_gender.py    two-panel meme (legacy figure)
 visualize_chance.py    looks vs ambition vs income partial effects
-gui.py                 stdlib web GUI: one page, every model, the map and the bands
+gui.py                 launcher: native desktop GUI by default, legacy browser UI with --serve
+local_gui.py           stdlib Tk desktop GUI: one window, every model, the map and the bands
 couples.py             measured ACS couple context + NHANES height percentile
 research.py            published evidence used as capped priors, with sources
 likes.py               dyad models: P(a specific package says yes to you)
