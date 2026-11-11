@@ -39,7 +39,7 @@ python hypergamy_map.py              # the map: svg + png + the reach bands
 python profile.py --demo
 python partner.py --demo
 python adult.py
-python -m unittest discover -s tests -v   # 23-test v1.5.0 regression suite
+python -m unittest discover -s tests -v   # 23-test v1.5.1 regression suite
 ```
 
 ## Layout
@@ -90,7 +90,8 @@ preferences and self-ratings but an empty `income`; the 15-column copy has incom
 
 **OKCupid profiles** (JSE / rudeboybert, 59,946 rows, 22 variables). Descriptive only —
 no outcome column. Used for height percentiles, body-type mix and ethnicity, never for
-training.
+training. Do not “fix” this by inventing a yes/match label; HCMST has relationship
+outcomes rather than date decisions, and synthetic match datasets are excluded.
 
 **ACS 2023 1-year PUMS** (Census, CA/TX/FL/NY/IL): 250,172 opposite-sex married or
 cohabiting couples, 500,344 partner rows. Used only for measured couple context (partner
@@ -152,6 +153,8 @@ age-specific market model and the code says so rather than pretending.
   same-race flag and the context tables qualify. ACS is *realised couples*, not a date
   decision, and is never fed to the date network.
 * `population` = percentile from OKCupid or NHANES. Descriptive, no outcome.
+* OKCupid has no date outcome; it may supply a descriptive prior, never a trained
+  acceptance label.
 * `research` = published effect, cited in `adult.py` and README.
 * The whole adult layer is capped at ±8 points so it cannot outvote the networks.
 * "Who you end up with" is measured ACS couples plus dyad scores on that measured grid.

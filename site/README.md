@@ -36,6 +36,8 @@ as its source; the workflow runs on pushes to `main` that touch `site/`.
 3. Do not add an invented screenshot, quote, user count, or logo.
 4. The hero map is generated from `hypergamy_map.matrices()` by
    `python tools/export_site_map.py`; do not hand-edit `src/data/map.json`.
+5. OKCupid has no date-outcome column; use it only for descriptive priors, never as a
+   training label.
 
 ## Icons
 

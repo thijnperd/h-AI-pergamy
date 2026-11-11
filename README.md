@@ -7,7 +7,10 @@ far above your own ratings you aim (reaching)**, and **which partners are in rea
 Every number is **trained**, **measured** from a named dataset, or explicitly labelled
 a **research prior**. No decorative arrows and no invented statistics.
 
-**v1.5.0** turns the promo map into an explorer: switch between the mutual chance and
+**v1.5.1** fixes the result screenshot alignment on the Pages site, explains the map's
+best-cell rings in place, and adds a data-provenance audit: OKCupid has no date-outcome
+label, so it is not a training set. **v1.5.0** turns the promo map into an explorer:
+switch between the mutual chance and
 either direction, pin a package pair, and toggle the best-cell markers. The static map's
 markers are now high-contrast rings, and the calculator result panel stays in view while
 you edit. **v1.4.1** made the education intake optional; **v1.4.0** added the measured
@@ -185,13 +188,22 @@ documented prior, capped at 8 points, and every row prints its basis: `measured`
 The networks, the routing, the map generation and every source:
 **[HOWITWORKS.md](HOWITWORKS.md)**. The effect table: `python adult.py`.
 
+### Why the 59,946 OKCupid profiles are not training rows
+
+The public OKCupid file has no date-decision or mutual-match column. A supervised
+acceptance model needs that label; fitting one anyway would mean inventing the target.
+OKCupid is used only for descriptive height and body priors, never as a yes/no example.
+HCMST has relationship outcomes, not date decisions, and is cited rather than shipped.
+The public “online dating matches” Kaggle dataset is synthetic and excluded. No additional
+real, redistributable profile-to-match dataset was found for this release.
+
 ## Testing
 
 ```bash
 python -m unittest discover -s tests -v
 ```
 
-The v1.3.0 suite has **15 tests**: the reference profile, an average man, an average
+The current suite has **23 tests**: the reference profile, an average man, an average
 woman, eight edge cases (age 18/80, income $0/$10M, height 140/210 cm, all 0s and
 all 10s, same-gender pairs), 20 seeded random profiles, JSON/NaN checks, 10x10 map
 invariants, the committed CV metadata, the anatomy directions, and the HTML hooks.

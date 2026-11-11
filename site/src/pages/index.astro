@@ -43,7 +43,7 @@ const repo = 'https://github.com/thijnperd/h-AI-pergamy';
     <!-- hero -->
     <section class="hero wrap" aria-labelledby="hero-title">
       <div class="hero-copy">
-        <p class="eyebrow"><span class="dot" aria-hidden="true"></span> v1.5.0 · local-first · no account</p>
+        <p class="eyebrow"><span class="dot" aria-hidden="true"></span> v1.5.1 · local-first · no account</p>
         <h1 id="hero-title">
           Who says yes.
           <span class="accent">And who you'd actually end up with.</span>
@@ -162,6 +162,7 @@ const repo = 'https://github.com/thijnperd/h-AI-pergamy';
           </p>
           <ul class="list-check">
             <li>The arrows are average behaviour: each man points at his best column, each woman at her best row.</li>
+            <li>The rings mark those best cells: one per row for him, one per column for her. They are grid maxima, not your personal result.</li>
             <li>Your arrow is drawn from your own profile, next to the cell you reach best.</li>
             <li>The bands are relative to your own best cell, so “likely” never means “guaranteed”.</li>
           </ul>
@@ -393,7 +394,6 @@ const repo = 'https://github.com/thijnperd/h-AI-pergamy';
           </div>
         </div>
       </div>
-    </section>
 
       <figure class="shot">
         <img
@@ -409,6 +409,7 @@ const repo = 'https://github.com/thijnperd/h-AI-pergamy';
           map and the partner panel all run on your machine.
         </figcaption>
       </figure>
+    </section>
 
     <!-- data -->
     <section class="section wrap" id="data" aria-labelledby="data-title">
@@ -425,7 +426,7 @@ const repo = 'https://github.com/thijnperd/h-AI-pergamy';
             <tr><td class="strong">Speed Dating Experiment, Columbia 2002–04</td><td class="num">8,378 dates</td><td>Trained targets: <code>dec</code>, <code>dec_o</code>, <code>match</code></td></tr>
             <tr><td class="strong">ACS 2023 1-year PUMS (CA, TX, FL, NY, IL)</td><td class="num">250,172 couples</td><td>Measured partner age, income, gap, same ethnicity/education</td></tr>
             <tr><td class="strong">NHANES Aug 2021–Aug 2023</td><td class="num">6,262 adults</td><td>Measured height percentiles</td></tr>
-            <tr><td class="strong">OKCupid profiles (JSE)</td><td class="num">59,946</td><td>Descriptive height, body and ethnicity mix — never trained</td></tr>
+            <tr><td class="strong"><a href="https://github.com/rudeboybert/JSE_OkCupid" target="_blank" rel="noreferrer">OKCupid profiles (JSE)</a></td><td class="num">59,946</td><td>Descriptive height/body priors — no date-outcome label, so never trained</td></tr>
             <tr><td class="strong">HCMST</td><td class="num">cited</td><td>The right panel for lifetime stability; not shipped, not trained</td></tr>
           </tbody>
         </table>
@@ -434,6 +435,23 @@ const repo = 'https://github.com/thijnperd/h-AI-pergamy';
         Raw downloads are gitignored. The small priors JSON files are committed so the calculator
         runs after a clone; the builders reproduce them from the public sources.
       </p>
+
+      <div class="card data-audit">
+        <h3>Why OKCupid is not a training set</h3>
+        <p>
+          The public OKCupid file has 59,946 profiles but no column for a date decision or a
+          mutual match. A supervised acceptance model needs that label; fitting one anyway would
+          mean inventing the target. It is used only for descriptive height and body priors,
+          never as a yes/no example.
+        </p>
+        <p>
+          HCMST has real relationship outcomes, not date decisions, and is cited rather than
+          shipped. The public “online dating matches” Kaggle dataset was checked and excluded
+          because it is synthetic. No additional real, redistributable profile-to-match dataset
+          was found for this release, so the acceptance networks remain trained only on the
+          8,378 real speed dates.
+        </p>
+      </div>
     </section>
 
     <!-- faq -->
@@ -455,6 +473,10 @@ const repo = 'https://github.com/thijnperd/h-AI-pergamy';
         <details>
           <summary>Why is the “will they say yes” model weaker?</summary>
           <div class="answer"><p>Because a stranger's decision is mostly noise. The market models clear their baselines by +4.6 to +8.1 points, while the taste models — whether <em>you</em> say yes — clear theirs by +14.5 to +31.0. The UI shows both rather than pretending they are equally reliable.</p></div>
+        </details>
+        <details>
+          <summary>Why isn’t OKCupid trained with the speed dates?</summary>
+          <div class="answer"><p>The public file has 59,946 profiles but no date-decision or mutual-match label. Training it as a yes/no model would mean inventing the outcome. It supplies descriptive height and body priors only; the acceptance networks use the 8,378 real dates.</p></div>
         </details>
         <details>
           <summary>Does it work for same-gender couples?</summary>

@@ -78,7 +78,9 @@ const metrics = [
       class="marker-toggle"
       data-marker-toggle
       aria-pressed="true"
-      title="Show or hide his and her best mutual cells"
+      aria-label="Show or hide the best-cell rings"
+      aria-describedby="map-best-note"
+      title="Show or hide the best-cell rings"
     >
       Best cells
     </button>
@@ -132,6 +134,10 @@ const metrics = [
       <span id="map-selection-text"></span>
       <button type="button" class="selection-clear" id="map-clear">Clear</button>
     </div>
+    <p class="map-best-note" id="map-best-note">
+      <strong>Best cells</strong> — the ink ring is the highest mutual chance in each man's row;
+      the blue ring is the highest in each woman's column. They are grid maxima, not your result.
+    </p>
     <div class="map-legend">
       <span class="map-legend-item"><i class="key-dot his" aria-hidden="true"></i> his best mutual cell</span>
       <span class="map-legend-item"><i class="key-dot her" aria-hidden="true"></i> her best mutual cell</span>
@@ -623,6 +629,21 @@ const metrics = [
   .selection-clear:hover {
     color: var(--ink);
     border-color: #cfc0b8;
+  }
+
+  .map-best-note {
+    margin: 0;
+    padding: 8px 10px;
+    border-left: 2px solid var(--rule);
+    border-radius: 0 6px 6px 0;
+    background: var(--soft);
+    color: var(--muted);
+    font-size: 12px;
+    line-height: 1.5;
+  }
+
+  .map-best-note strong {
+    color: var(--ink);
   }
 
   .map-legend {

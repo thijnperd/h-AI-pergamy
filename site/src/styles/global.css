@@ -673,6 +673,15 @@ td.strong {
   color: var(--muted);
 }
 
+.data-audit {
+  margin-top: 16px;
+  max-width: 900px;
+}
+
+.data-audit p + p {
+  margin-top: 10px;
+}
+
 /* ---------- partner ---------- */
 
 .partner-panel {
