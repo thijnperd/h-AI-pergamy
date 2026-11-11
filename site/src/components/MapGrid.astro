@@ -2,7 +2,7 @@
 import { ArrowUpRight } from '@lucide/astro';
 import data from '../data/map.json';
 
-const { grid, max } = data;
+const { grid, his, her, max, max_his, max_her, packages } = data;
 const base = import.meta.env.BASE_URL.replace(/\/$/, '');
 
 // Sequential ramp that stays inside the site's warm-paper palette.
@@ -25,16 +25,63 @@ function colour(t: number) {
   return `rgb(${c.join(',')})`;
 }
 
-const best = grid.map((row) => row.indexOf(Math.max(...row)));
+const bestHis = grid.map((row) => row.indexOf(Math.max(...row)));
+const bestHer = Array.from({ length: 10 }, (_, j) => {
+  let bestRow = 0;
+  for (let i = 1; i < grid.length; i += 1) {
+    if (grid[i][j] > grid[bestRow][j]) bestRow = i;
+  }
+  return bestRow;
+});
+
+const metrics = [
+  { id: 'mutual', label: 'Mutual', formula: 'P(he says yes) × P(she says yes)' },
+  { id: 'his', label: 'His yes', formula: 'P(he says yes)' },
+  { id: 'her', label: 'Her yes', formula: 'P(she says yes)' },
+];
 ---
 
-<figure class="map-card">
+<figure
+  class="map-card"
+  data-packages={JSON.stringify(packages)}
+  data-max-mutual={max}
+  data-max-his={max_his}
+  data-max-her={max_her}
+>
   <div class="map-head">
-    <p class="map-title">The hypergamy map</p>
+    <div>
+      <p class="map-title">The hypergamy map</p>
+      <p class="map-formula" id="map-formula">P(he says yes) × P(she says yes)</p>
+    </div>
     <a class="map-link" href={`${base}/hypergamy_map.svg`} target="_blank" rel="noreferrer">
       Full annotated map
       <ArrowUpRight size={13} stroke-width={2} aria-hidden="true" />
     </a>
+  </div>
+
+  <div class="map-tools">
+    <div class="metric-switch" role="group" aria-label="Choose what the map shows">
+      {metrics.map((metric, i) => (
+        <button
+          type="button"
+          class="metric"
+          data-metric={metric.id}
+          aria-pressed={i === 0 ? 'true' : 'false'}
+          title={metric.formula}
+        >
+          {metric.label}
+        </button>
+      ))}
+    </div>
+    <button
+      type="button"
+      class="marker-toggle"
+      data-marker-toggle
+      aria-pressed="true"
+      title="Show or hide his and her best mutual cells"
+    >
+      Best cells
+    </button>
   </div>
 
   <div
@@ -53,14 +100,23 @@ const best = grid.map((row) => row.indexOf(Math.max(...row)));
         row.map((p, j) => (
           <button
             type="button"
-            class:list={['map-cell', { best: best[i] === j }]}
+            class:list={[
+              'map-cell',
+              { 'best-his': bestHis[i] === j, 'best-her': bestHer[j] === i },
+            ]}
             style={`--cell:${colour(p / max)}`}
             data-row={i + 1}
             data-col={j + 1}
+            data-mutual={p.toFixed(4)}
+            data-his={his[i][j].toFixed(4)}
+            data-her={her[i][j].toFixed(4)}
             data-p={(p * 100).toFixed(1)}
             tabindex={i === 0 && j === 0 ? 0 : -1}
-            aria-label={`Man package ${i + 1}, woman package ${j + 1}: ${(p * 100).toFixed(1)} percent chance both say yes${best[i] === j ? ', his highest-mutual package' : ''}`}
-          />
+            aria-label={`Man package ${i + 1}, woman package ${j + 1}: ${(p * 100).toFixed(1)} percent chance both say yes${bestHis[i] === j ? '; his best mutual package' : ''}${bestHer[j] === i ? '; her best mutual package' : ''}`}
+          >
+            {bestHis[i] === j && <span class="marker his" aria-hidden="true"></span>}
+            {bestHer[j] === i && <span class="marker her" aria-hidden="true"></span>}
+          </button>
         ))
       )}
     </div>
@@ -68,11 +124,22 @@ const best = grid.map((row) => row.indexOf(Math.max(...row)));
   </div>
 
   <figcaption>
-    <output id="map-readout" aria-live="polite">Focus or hover a cell to read its chance of a mutual yes.</output>
+    <output id="map-readout" aria-live="polite">
+      Focus or hover a cell to read its chance. Click to pin a package pair.
+    </output>
+    <div class="map-selection" id="map-selection" aria-live="polite" hidden>
+      <span class="selection-label">Pinned</span>
+      <span id="map-selection-text"></span>
+      <button type="button" class="selection-clear" id="map-clear">Clear</button>
+    </div>
+    <div class="map-legend">
+      <span class="map-legend-item"><i class="key-dot his" aria-hidden="true"></i> his best mutual cell</span>
+      <span class="map-legend-item"><i class="key-dot her" aria-hidden="true"></i> her best mutual cell</span>
+    </div>
     <span class="map-key">
-      Rows are men, columns women. Each cell is P(he says yes) × P(she says yes) from the
-      committed dyad weights. The dot marks that man's highest-mutual package. The ten rungs
-      are packages — looks, age and income climb together — not ten real people.
+      Rows are men, columns women. Switch between the mutual chance and either direction.
+      The rings always mark the best mutual cell for that row or column. The ten rungs are
+      packages — looks, age and income climb together — not ten real people.
     </span>
   </figcaption>
 </figure>
@@ -80,31 +147,179 @@ const best = grid.map((row) => row.indexOf(Math.max(...row)));
 <script>
   const figure = document.querySelector<HTMLElement>('.map-card');
   if (figure) {
-    const out = figure.querySelector<HTMLOutputElement>('output');
+    type Metric = 'mutual' | 'his' | 'her';
+
+    const stops = [
+      [255, 247, 250],
+      [251, 228, 236],
+      [246, 203, 218],
+      [238, 171, 193],
+      [228, 133, 165],
+      [213, 92, 133],
+      [189, 59, 103],
+      [143, 37, 73],
+    ];
+
+    const colour = (t: number) => {
+      const x = Math.min(Math.max(t, 0), 1) * (stops.length - 1);
+      const i = Math.min(Math.floor(x), stops.length - 2);
+      const f = x - i;
+      const c = stops[i].map((v, k) => Math.round(v + (stops[i + 1][k] - v) * f));
+      return `rgb(${c.join(',')})`;
+    };
+
+    const out = figure.querySelector<HTMLOutputElement>('#map-readout');
+    const formula = figure.querySelector<HTMLElement>('#map-formula');
+    const selection = figure.querySelector<HTMLElement>('#map-selection');
+    const selectionText = figure.querySelector<HTMLElement>('#map-selection-text');
+    const clear = figure.querySelector<HTMLButtonElement>('#map-clear');
+    const markerToggle = figure.querySelector<HTMLButtonElement>('[data-marker-toggle]');
+    const metricButtons = [
+      ...figure.querySelectorAll<HTMLButtonElement>('[data-metric]'),
+    ];
     const cells = [...figure.querySelectorAll<HTMLButtonElement>('.map-cell')];
     const rowLabels = [...figure.querySelectorAll<HTMLElement>('.row-labels span')];
     const colLabels = [...figure.querySelectorAll<HTMLElement>('.col-labels span')];
 
-    const show = (cell: HTMLButtonElement) => {
+    const packages = JSON.parse(figure.dataset.packages ?? '[]') as Array<{
+      level: number;
+      looks: number;
+      age: number;
+      income: number;
+    }>;
+
+    const maxes: Record<Metric, number> = {
+      mutual: Number(figure.dataset.maxMutual),
+      his: Number(figure.dataset.maxHis),
+      her: Number(figure.dataset.maxHer),
+    };
+
+    const metricCopy: Record<Metric, string> = {
+      mutual: 'chance both say yes',
+      his: 'chance he says yes',
+      her: 'chance she says yes',
+    };
+
+    let metric: Metric = 'mutual';
+    let activeCell: HTMLButtonElement | null = null;
+    let pinned: HTMLButtonElement | null = null;
+
+    const value = (cell: HTMLButtonElement, key: Metric) =>
+      Number(cell.dataset[key] ?? 0);
+
+    const percent = (cell: HTMLButtonElement) =>
+      (value(cell, metric) * 100).toFixed(1);
+
+    const labelFor = (cell: HTMLButtonElement) => {
+      const marks: string[] = [];
+      if (cell.classList.contains('best-his')) marks.push('his best mutual package');
+      if (cell.classList.contains('best-her')) marks.push('her best mutual package');
+      return `Man package ${cell.dataset.row}, woman package ${cell.dataset.col}: ${percent(cell)} percent ${metricCopy[metric]}${marks.length ? `; ${marks.join('; ')}` : ''}`;
+    };
+
+    const paint = () => {
+      const max = maxes[metric] || 1;
+      cells.forEach((cell) => {
+        const p = value(cell, metric);
+        cell.style.setProperty('--cell', colour(p / max));
+        cell.dataset.p = (p * 100).toFixed(1);
+        cell.setAttribute('aria-label', labelFor(cell));
+      });
+    };
+
+    const packageLine = (cell: HTMLButtonElement) => {
+      const row = Number(cell.dataset.row) - 1;
+      const col = Number(cell.dataset.col) - 1;
+      const man = packages[row];
+      const woman = packages[col];
+      if (!man || !woman) return '';
+      return `Man package ${man.level} (${man.looks.toFixed(1)}/10, age ${man.age}, $${man.income.toFixed(1)}k) × Woman package ${woman.level} (${woman.looks.toFixed(1)}/10, age ${woman.age}, $${woman.income.toFixed(1)}k): ${percent(cell)}% ${metricCopy[metric]}.`;
+    };
+
+    const clearPin = () => {
+      if (pinned) pinned.classList.remove('is-pinned');
+      pinned = null;
+      if (selection) selection.hidden = true;
+    };
+
+    const show = (cell: HTMLButtonElement, pin = false) => {
+      activeCell = cell;
       const row = Number(cell.dataset.row) - 1;
       const col = Number(cell.dataset.col) - 1;
       rowLabels.forEach((label, i) => label.classList.toggle('is-active', i === row));
       colLabels.forEach((label, i) => label.classList.toggle('is-active', i === col));
       if (out) {
-        out.textContent = `Man package ${cell.dataset.row}, woman package ${cell.dataset.col}: ${cell.dataset.p}% chance both say yes.`;
+        out.textContent = `Man package ${cell.dataset.row}, woman package ${cell.dataset.col}: ${percent(cell)}% ${metricCopy[metric]}.`;
+      }
+
+      if (pin) {
+        if (pinned) pinned.classList.remove('is-pinned');
+        pinned = cell;
+        cell.classList.add('is-pinned');
+        if (selection && selectionText) {
+          selectionText.textContent = packageLine(cell);
+          selection.hidden = false;
+        }
       }
     };
 
     cells.forEach((cell) => {
       cell.addEventListener('mouseenter', () => show(cell));
       cell.addEventListener('focus', () => show(cell));
-      cell.addEventListener('click', () => show(cell));
+      cell.addEventListener('click', () => {
+        if (pinned === cell) {
+          clearPin();
+          show(cell);
+        } else {
+          show(cell, true);
+        }
+      });
+    });
+
+    metricButtons.forEach((button) => {
+      button.addEventListener('click', () => {
+        metric = (button.dataset.metric ?? 'mutual') as Metric;
+        metricButtons.forEach((item) =>
+          item.setAttribute('aria-pressed', String(item === button))
+        );
+        if (formula) {
+          formula.textContent =
+            metric === 'mutual'
+              ? 'P(he says yes) × P(she says yes)'
+              : metric === 'his'
+                ? 'P(he says yes)'
+                : 'P(she says yes)';
+        }
+        paint();
+        if (pinned) {
+          show(pinned, true);
+        } else if (activeCell) {
+          show(activeCell);
+        } else if (out) {
+          out.textContent = `${button.textContent?.trim()}: hover or focus a cell to read its value.`;
+        }
+      });
+    });
+
+    markerToggle?.addEventListener('click', () => {
+      const hidden = figure.classList.toggle('markers-off');
+      markerToggle.setAttribute('aria-pressed', String(!hidden));
+    });
+
+    clear?.addEventListener('click', () => {
+      clearPin();
+      if (out) out.textContent = 'Focus or hover a cell to read its chance. Click to pin a package pair.';
     });
 
     figure.querySelector('.map-cells')?.addEventListener('keydown', (event) => {
       const key = (event as KeyboardEvent).key;
       const cell = (event.target as HTMLElement).closest<HTMLButtonElement>('.map-cell');
       if (!cell) return;
+
+      if (key === 'Escape') {
+        clearPin();
+        return;
+      }
 
       const moves: Record<string, readonly [number, number]> = {
         ArrowUp: [-1, 0],
@@ -123,6 +338,8 @@ const best = grid.map((row) => row.indexOf(Math.max(...row)));
       next.tabIndex = 0;
       next.focus();
     });
+
+    paint();
   }
 </script>
 
@@ -138,10 +355,10 @@ const best = grid.map((row) => row.indexOf(Math.max(...row)));
 
   .map-head {
     display: flex;
-    align-items: baseline;
+    align-items: flex-start;
     justify-content: space-between;
     gap: 12px;
-    padding: 4px 6px 13px;
+    padding: 4px 6px 10px;
   }
 
   .map-title {
@@ -150,10 +367,18 @@ const best = grid.map((row) => row.indexOf(Math.max(...row)));
     letter-spacing: -0.01em;
   }
 
+  .map-formula {
+    margin: 4px 0 0;
+    color: var(--muted);
+    font: 500 11.5px/1.4 var(--mono);
+    white-space: nowrap;
+  }
+
   .map-link {
     display: inline-flex;
     align-items: center;
     gap: 4px;
+    flex: none;
     font: 600 12.5px/1.2 var(--sans);
     color: var(--pink);
     text-decoration: none;
@@ -162,6 +387,68 @@ const best = grid.map((row) => row.indexOf(Math.max(...row)));
 
   .map-link:hover {
     text-decoration: underline;
+  }
+
+  .map-tools {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin: 0 6px 10px;
+  }
+
+  .metric-switch {
+    display: inline-flex;
+    gap: 2px;
+    padding: 2px;
+    border: 1px solid var(--rule);
+    border-radius: 9px;
+    background: var(--soft);
+  }
+
+  .metric {
+    min-height: 30px;
+    padding: 6px 8px;
+    border: 0;
+    border-radius: 6px;
+    background: transparent;
+    color: var(--muted);
+    font: 600 11.5px/1 var(--sans);
+    cursor: pointer;
+    white-space: nowrap;
+  }
+
+  .metric:hover {
+    color: var(--ink);
+  }
+
+  .metric[aria-pressed="true"] {
+    background: var(--ink);
+    color: #fff;
+  }
+
+  .marker-toggle {
+    min-height: 34px;
+    padding: 6px 9px;
+    border: 1px solid var(--rule);
+    border-radius: 8px;
+    background: var(--surface);
+    color: var(--muted);
+    font: 600 11.5px/1 var(--sans);
+    cursor: pointer;
+    white-space: nowrap;
+  }
+
+  .marker-toggle:hover {
+    color: var(--ink);
+    border-color: #cfc0b8;
+  }
+
+  .marker-toggle[aria-pressed="true"] {
+    border-color: #e3c8d2;
+    background: var(--pink-soft);
+    color: var(--pink-deep);
   }
 
   .map-plot {
@@ -221,11 +508,13 @@ const best = grid.map((row) => row.indexOf(Math.max(...row)));
     min-width: 0;
     min-height: 0;
     padding: 0;
+    overflow: visible;
     border: 0;
     border-radius: 3px;
     background: var(--cell);
     cursor: crosshair;
     touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
   }
 
   .map-cell:hover,
@@ -235,16 +524,37 @@ const best = grid.map((row) => row.indexOf(Math.max(...row)));
     outline-offset: -2px;
   }
 
-  .map-cell.best::after {
-    content: "";
+  .map-cell.is-pinned {
+    z-index: 1;
+    outline: 2px solid var(--pink);
+    outline-offset: -2px;
+  }
+
+  .marker {
     position: absolute;
-    top: 4px;
     left: 50%;
-    width: 5px;
-    height: 5px;
-    margin-left: -2.5px;
+    z-index: 2;
+    width: 7px;
+    height: 7px;
     border-radius: 50%;
-    background: var(--ink);
+    background: #fff;
+    transform: translateX(-50%);
+    pointer-events: none;
+    box-shadow: 0 0 0 1px rgba(36, 27, 33, 0.16);
+  }
+
+  .marker.his {
+    top: 4px;
+    border: 1.5px solid var(--ink);
+  }
+
+  .marker.her {
+    bottom: 4px;
+    border: 1.5px solid var(--blue);
+  }
+
+  .markers-off .marker {
+    display: none;
   }
 
   .axis.x {
@@ -258,7 +568,7 @@ const best = grid.map((row) => row.indexOf(Math.max(...row)));
 
   figcaption {
     display: grid;
-    gap: 6px;
+    gap: 7px;
     padding: 11px 6px 2px;
   }
 
@@ -266,6 +576,84 @@ const best = grid.map((row) => row.indexOf(Math.max(...row)));
     min-height: 2.9em;
     font: 600 13.5px/1.45 var(--sans);
     color: var(--ink);
+  }
+
+  .map-selection {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    flex-wrap: wrap;
+    padding: 8px 9px;
+    border: 1px solid var(--rule);
+    border-radius: 8px;
+    background: var(--soft);
+    font-size: 12.5px;
+    line-height: 1.45;
+  }
+
+  .map-selection[hidden] {
+    display: none;
+  }
+
+  .selection-label {
+    flex: none;
+    padding-top: 1px;
+    color: var(--pink);
+    font: 700 11px/1.4 var(--sans);
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+  }
+
+  #map-selection-text {
+    flex: 1 1 12rem;
+    min-width: 0;
+  }
+
+  .selection-clear {
+    flex: none;
+    padding: 3px 7px;
+    border: 1px solid var(--rule);
+    border-radius: 5px;
+    background: var(--surface);
+    color: var(--muted);
+    font: 600 11px/1.3 var(--sans);
+    cursor: pointer;
+  }
+
+  .selection-clear:hover {
+    color: var(--ink);
+    border-color: #cfc0b8;
+  }
+
+  .map-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 14px;
+    color: var(--muted);
+    font-size: 12px;
+  }
+
+  .map-legend-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+  }
+
+  .key-dot {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #fff;
+    box-shadow: 0 0 0 1px rgba(36, 27, 33, 0.16);
+  }
+
+  .key-dot.his {
+    border: 1.5px solid var(--ink);
+  }
+
+  .key-dot.her {
+    border: 1.5px solid var(--blue);
   }
 
   .map-key {
@@ -280,12 +668,24 @@ const best = grid.map((row) => row.indexOf(Math.max(...row)));
     }
 
     .map-head {
+      flex-wrap: wrap;
       padding: 2px 2px 10px;
     }
 
-    .map-head,
-    figcaption {
-      flex-wrap: wrap;
+    .map-formula {
+      white-space: normal;
+    }
+
+    .map-tools {
+      margin-inline: 2px;
+    }
+
+    .metric-switch {
+      flex: 1 1 100%;
+    }
+
+    .metric {
+      flex: 1;
     }
 
     .map-plot {
@@ -299,11 +699,21 @@ const best = grid.map((row) => row.indexOf(Math.max(...row)));
       gap: 2px;
     }
 
-    .map-cell.best::after {
+    .marker {
+      width: 6px;
+      height: 6px;
+    }
+
+    .marker.his {
       top: 3px;
-      width: 4px;
-      height: 4px;
-      margin-left: -2px;
+    }
+
+    .marker.her {
+      bottom: 3px;
+    }
+
+    .selection-label {
+      padding-top: 0;
     }
   }
 </style>

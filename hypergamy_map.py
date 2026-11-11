@@ -105,19 +105,29 @@ def _likes_yes(rater_gender, target, rater):
 
 
 @lru_cache(maxsize=1)
-def matrix():
-    """10x10 mutual probabilities, rows are men, columns are women."""
+def matrices():
+    """10x10 mutual, his and her probabilities.
+
+    Rows are men, columns are women. `his[i, j]` is P(the man in row i says
+    yes to the woman in column j); `her[i, j]` is the reverse. Their product
+    is the mutual probability.
+    """
     men = [archetype(1, k) for k in range(1, LEVELS + 1)]
     women = [archetype(0, k) for k in range(1, LEVELS + 1)]
-    grid = np.zeros((LEVELS, LEVELS))
+    his = np.zeros((LEVELS, LEVELS))
+    her = np.zeros((LEVELS, LEVELS))
     for i, man in enumerate(men):
         for j, woman in enumerate(women):
             # Both directions from the dyad models: each package carries its own
             # yes-rate instead of sharing one market constant across the row.
-            her = _likes_yes(0, man, woman)
-            his = _likes_yes(1, woman, man)
-            grid[i, j] = his * her
-    return grid
+            her[i, j] = _likes_yes(0, man, woman)
+            his[i, j] = _likes_yes(1, woman, man)
+    return his * her, his, her
+
+
+def matrix():
+    """10x10 mutual probabilities, rows are men, columns are women."""
+    return matrices()[0]
 
 
 def _bands(probs):
@@ -340,9 +350,9 @@ def map_svg(result):
             parts.append(f'<rect x="{x}" y="{y}" width="{cw - 2}" height="{ch - 2}" '
                          f'fill="{_colour(p, top)}"/>')
             if j == best_row[i]:
-                parts.append(f'<circle cx="{x + cw / 2}" cy="{y + 7}" r="2" fill="#111"/>')
+                parts.append(f'<circle cx="{x + cw / 2}" cy="{y + 7}" r="2.6" fill="#ffffff" stroke="#111" stroke-width="1"/>')
             if i == best_col[j]:
-                parts.append(f'<circle cx="{x + 6}" cy="{y + ch / 2}" r="2" fill="#1b9ad6"/>')
+                parts.append(f'<circle cx="{x + 6}" cy="{y + ch / 2}" r="2.6" fill="#ffffff" stroke="#1b9ad6" stroke-width="1"/>')
 
     best = result["best_level"] - 1
     level = result["your_level"] - 1
@@ -365,7 +375,7 @@ def map_svg(result):
                  f'font-size="9" fill="#8a8a8a">high</text>')
     parts.append(f'<text x="{x0 + len(PALETTE) * 34 + 40}" y="{y0 + LEVELS * ch + 23}" '
                  f'font-size="9" fill="#8a8a8a">P(he says yes) x P(she says yes)  ·  '
-                 f'black dot = his best column  ·  blue dot = her best row</text>')
+                 f'black ring = his best column  ·  blue ring = her best row</text>')
 
     # the arrow panel: 10 men on the left, 10 women on the right
     ax_m, ax_w = 690, 980

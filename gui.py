@@ -341,7 +341,7 @@ PAGE = r"""<!doctype html>
         Nothing leaves this machine.</p></div>
   </div>
   <div class="header-meta"><span class="pill local">local only</span>
-    <span class="pill">v1.4.1</span><span class="pill">trained + measured</span></div>
+    <span class="pill">v1.5.0</span><span class="pill">trained + measured</span></div>
 </header>
 <main class="shell">
   <section class="panel form-panel" aria-labelledby="profile-title">

@@ -1,7 +1,7 @@
 """Write the promo site's 10x10 map from the committed dyad weights.
 
 The site must not ship a hand-copied heatmap. This exporter runs the same
-``hypergamy_map.matrix()`` the CLI and GUI use, then records the package
+``hypergamy_map.matrices()`` the CLI and GUI use, then records the package
 definitions next to it so the page has one source of truth.
 
     python tools/export_site_map.py
@@ -18,7 +18,7 @@ import hypergamy_map as hm  # noqa: E402
 
 
 def main():
-    grid = hm.matrix()
+    mutual, his, her = hm.matrices()
     packages = []
     for level in range(1, hm.LEVELS + 1):
         profile = hm.archetype(1, level)
@@ -30,10 +30,14 @@ def main():
         })
 
     payload = {
-        "generated_by": "tools/export_site_map.py from hypergamy_map.matrix()",
-        "note": "100 forward passes through the committed dyad weights; rows men, columns women.",
-        "grid": [[round(float(v), 4) for v in row] for row in grid],
-        "max": round(float(grid.max()), 4),
+        "generated_by": "tools/export_site_map.py from hypergamy_map.matrices()",
+        "note": "100 forward passes through the committed dyad weights; rows men, columns women. her/his are directional probabilities.",
+        "grid": [[round(float(v), 4) for v in row] for row in mutual],
+        "his": [[round(float(v), 4) for v in row] for row in his],
+        "her": [[round(float(v), 4) for v in row] for row in her],
+        "max": round(float(mutual.max()), 4),
+        "max_his": round(float(his.max()), 4),
+        "max_her": round(float(her.max()), 4),
         "packages": packages,
     }
 
@@ -42,7 +46,7 @@ def main():
     with open(out, "w", encoding="utf-8") as handle:
         json.dump(payload, handle, indent=2)
         handle.write("\n")
-    print(f"wrote {out} (max {payload['max']})")
+    print(f"wrote {out} (mutual max {payload['max']})")
 
 
 if __name__ == "__main__":
