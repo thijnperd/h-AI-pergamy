@@ -7,6 +7,8 @@ far above your own ratings you aim (reaching)**, and **which partners are in rea
 Every number is **trained**, **measured** from a named dataset, or explicitly labelled
 a **research prior**. No decorative arrows and no invented statistics.
 
+**v1.6.1** fixes the release zip: it now includes `partner.py` and the `data/build*.py`
+scripts, so the downloaded runtime can start the desktop GUI and rebuild the priors.
 **v1.6.0** makes the native Tk desktop window the default local GUI; the browser page
 remains behind `python gui.py --serve`. **v1.5.1** fixed the result screenshot alignment
 on the Pages site, explains the map's best-cell rings in place, and adds a

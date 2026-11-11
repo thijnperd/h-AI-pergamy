@@ -39,7 +39,7 @@ python hypergamy_map.py              # the map: svg + png + the reach bands
 python profile.py --demo
 python partner.py --demo
 python adult.py
-python -m unittest discover -s tests -v   # 26-test v1.6.0 regression suite
+python -m unittest discover -s tests -v   # 26-test v1.6.1 regression suite
 ```
 
 ## Layout
