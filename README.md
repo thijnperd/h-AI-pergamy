@@ -7,9 +7,11 @@ far above your own ratings you aim (reaching)**, and **which partners are in rea
 Every number is **trained**, **measured** from a named dataset, or explicitly labelled
 a **research prior**. No decorative arrows and no invented statistics.
 
-**v1.5.1** fixes the result screenshot alignment on the Pages site, explains the map's
-best-cell rings in place, and adds a data-provenance audit: OKCupid has no date-outcome
-label, so it is not a training set. **v1.5.0** turns the promo map into an explorer:
+**v1.6.0** makes the native Tk desktop window the default local GUI; the browser page
+remains behind `python gui.py --serve`. **v1.5.1** fixed the result screenshot alignment
+on the Pages site, explains the map's best-cell rings in place, and adds a
+data-provenance audit: OKCupid has no date-outcome label, so it is not a training set.
+**v1.5.0** turns the promo map into an explorer:
 switch between the mutual chance and
 either direction, pin a package pair, and toggle the best-cell markers. The static map's
 markers are now high-contrast rings, and the calculator result panel stays in view while
