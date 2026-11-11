@@ -32,6 +32,7 @@ const ogImage = new URL(`${base}/og-map.png`, Astro.site);
     <meta name="twitter:image" content={ogImage} />
   </head>
   <body>
+    <div class="scroll-progress" aria-hidden="true"></div>
     <a class="skip" href="#main">Skip to content</a>
     <slot />
     <script>

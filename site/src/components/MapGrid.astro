@@ -43,10 +43,10 @@ const best = grid.map((row) => row.indexOf(Math.max(...row)));
     aria-label="Ten by ten hypergamy map. Rows are men's packages, columns are women's packages, numbered one to ten."
   >
     <div class="col-labels" aria-hidden="true">
-      {Array.from({ length: 10 }, (_, j) => <span>{j + 1}</span>)}
+      {Array.from({ length: 10 }, (_, j) => <span data-index={j}>{j + 1}</span>)}
     </div>
     <div class="row-labels" aria-hidden="true">
-      {Array.from({ length: 10 }, (_, i) => <span>{i + 1}</span>)}
+      {Array.from({ length: 10 }, (_, i) => <span data-index={i}>{i + 1}</span>)}
     </div>
     <div class="map-cells">
       {grid.map((row, i) =>
@@ -82,8 +82,14 @@ const best = grid.map((row) => row.indexOf(Math.max(...row)));
   if (figure) {
     const out = figure.querySelector<HTMLOutputElement>('output');
     const cells = [...figure.querySelectorAll<HTMLButtonElement>('.map-cell')];
+    const rowLabels = [...figure.querySelectorAll<HTMLElement>('.row-labels span')];
+    const colLabels = [...figure.querySelectorAll<HTMLElement>('.col-labels span')];
 
     const show = (cell: HTMLButtonElement) => {
+      const row = Number(cell.dataset.row) - 1;
+      const col = Number(cell.dataset.col) - 1;
+      rowLabels.forEach((label, i) => label.classList.toggle('is-active', i === row));
+      colLabels.forEach((label, i) => label.classList.toggle('is-active', i === col));
       if (out) {
         out.textContent = `Man package ${cell.dataset.row}, woman package ${cell.dataset.col}: ${cell.dataset.p}% chance both say yes.`;
       }
@@ -169,6 +175,17 @@ const best = grid.map((row) => row.indexOf(Math.max(...row)));
   .row-labels {
     font: 600 11.5px/1 var(--sans);
     color: var(--muted);
+  }
+
+  .col-labels span,
+  .row-labels span {
+    transition: color 0.16s ease;
+  }
+
+  .col-labels span.is-active,
+  .row-labels span.is-active {
+    color: var(--pink);
+    font-weight: 700;
   }
 
   .col-labels {
